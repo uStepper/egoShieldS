@@ -387,7 +387,8 @@ void egoShield::pauseMode(void)
 void egoShield::timeMode(void)
 {  
   static uint8_t step = 0;  
-  static uint32_t i = 0;
+  static uint32_t i = 0, j = 0;
+  static uint8_t runState = 0;
 
   this->timePage(step,pidFlag);
   if(step == 0)//first put in how long to move at every step in mm
@@ -416,7 +417,7 @@ void egoShield::timeMode(void)
       this->forwardBtn.btn = 0;
       interval=interval+250;
     }
-    else if(this->backwardsBtn.btn == 1 && interval >= 500)
+    else if(this->backwardsBtn.btn == 1 && interval >= 750)
     {
       this->backwardsBtn.btn = 0;
       interval=interval-250;
@@ -449,36 +450,66 @@ void egoShield::timeMode(void)
   }
   else if(step == 3)//playing until the end
   {  
-    if(((millis() - i) > ((interval - 200))) && !stepper.getMotorState())
+    if(runState == 0)   //start new movement
     {
-      setPoint += (stepSize*resolution);
-      digitalWrite(OPTO, LOW);   // sets the LED in the opto on triggering the camera
-      delay(200);              // waits for a 200 milli seconds to allow camera to realise trigger has been fired
-      digitalWrite(OPTO, HIGH);  // sets the LED in the opto off releases the camera trigger
-      stepper.moveAngle((stepSize*resolution),brakeFlag);
-      this->timePage(step,pidFlag);
-      i = millis();
-      return;
-      //delay(interval-200);
+        setPoint += (stepSize*resolution);
+        stepper.moveAngle((stepSize*resolution),brakeFlag);
+        this->timePage(step,pidFlag);
+        i = millis();
+        runState = 1;
+        return;
     }
-      if(this->playBtn.btn == 1)
+    else if(runState == 1) //Waiting for movement to finish
+    {
+      if(!stepper.getMotorState())
       {
-        state = 'a';
-        step = 0;
-        this->resetAllButton(); 
+        j = millis();
+        runState = 2;
         return;
       }
-      //else if(stepper.getMotorState())
-      //{
-        if(stepper.isStalled())
-        {
-          stepper.moveToEnd(1);
-          state = 'a';//idle state 
-          step = 0;
-          this->resetAllButton();
-          return;
-        }
-      //}
+    }
+    else if(runState == 2) //Waiting 250ms before firing trigger. (to stabilize rail and avoid vibrations)
+    {
+      if(((millis() - j) > (250)))
+      {
+        digitalWrite(OPTO, LOW);   // sets the LED in the opto on triggering the camera
+        runState = 3;
+        j = millis();
+        return;
+      }
+    }
+    else if(runState == 3) //Waiting to release trigger
+    {
+      if(((millis() - j) > (200)))
+      {
+        digitalWrite(OPTO, HIGH);  // sets the LED in the opto off releases the camera trigger
+        runState = 4;
+        return;
+      }
+    }
+    else if(runState == 4) //Waiting The remaining period
+    {
+      if((millis() - i) > interval)
+      {
+        runState = 0;
+        return;
+      }
+    }
+    if(this->playBtn.btn == 1)
+    {
+      state = 'a';
+      step = 0;
+      this->resetAllButton(); 
+      return;
+    }
+    if(stepper.isStalled())
+    {
+      stepper.moveToEnd(1);
+      state = 'a';//idle state 
+      step = 0;
+      this->resetAllButton();
+      return;
+    }
   }
 }
 
