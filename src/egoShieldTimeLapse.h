@@ -234,6 +234,8 @@ public:
 	* @param[in]  	D takes in the PID D term.
 	*
 	* @param[in]  	res takes in the resolution of the drive in deg/mm.
+	*
+	* @param[in]  	Delay in milliseconds between motor stopped and shutter fires.
 	*/
 	void egoShield::setup(uint16_t acc = 1500, 
 						  uint16_t vel = 1000, 
@@ -243,7 +245,8 @@ public:
 						  float P = 1.0, 
 						  float I = 0.02, 
 						  float D = 0.006,
-						  float res = 1);
+						  float res = 1,
+						  uint16_t shutterDelay = 250);
 	/**
 	* @brief      	Contains the main logic of the shield functionality, e.g. transition between states (idle, play, record and pause).
 	*/	
@@ -312,6 +315,8 @@ private:
           				playBtn       = {0x1F, DEPRESSED, 0, 0, 0},
           				recordBtn     = {0x1F, DEPRESSED, 0, 0, 0},
           				backwardsBtn  = {0x1F, DEPRESSED, 0, 0, 0};
+	/** This variable holds the value of the delay between motor stops and the shutter fires */
+    uint16_t shutterDelay;
 
     /**
 	* @brief      	Function for resetting the state of a button seperately

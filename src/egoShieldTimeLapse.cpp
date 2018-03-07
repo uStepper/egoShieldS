@@ -79,7 +79,7 @@ egoShield::egoShield(void)
   u8g2 = new U8G2_SSD1306_128X64_NONAME_1_4W_SW_SPI(U8G2_R0, /* clock=*/ 11, /* data=*/ 9, /* cs=*/ U8X8_PIN_NONE, /* dc=*/ 2, /* reset=*/ 10);
 }
 
-void egoShield::setup(uint16_t acc, uint16_t vel, uint8_t uStep, uint16_t fTol, uint16_t fHys, float P, float I, float D, float res)//brake mode?
+void egoShield::setup(uint16_t acc, uint16_t vel, uint8_t uStep, uint16_t fTol, uint16_t fHys, float P, float I, float D, float res, uint16_t shutterDelay)//brake mode?
 {
    egoPointer = this;
 
@@ -100,6 +100,7 @@ void egoShield::setup(uint16_t acc, uint16_t vel, uint8_t uStep, uint16_t fTol, 
   this->resolution = res;
   this->stepSize = 2;
   this->interval = 2000;
+  this->shutterDelay = shutterDelay;
 
   brakeFlag = 1;
 
@@ -126,7 +127,7 @@ void egoShield::setup(uint16_t acc, uint16_t vel, uint8_t uStep, uint16_t fTol, 
   stepper.encoder.setHome();
   stepper.setMaxVelocity(this->velocity);
   stepper.setMaxAcceleration(this->acceleration);
-  pidFlag = 1;//enable PID
+  
   //Serial.begin(9600);
   pinMode(FWBT ,INPUT);
   pinMode(PLBT ,INPUT);
@@ -138,12 +139,17 @@ void egoShield::setup(uint16_t acc, uint16_t vel, uint8_t uStep, uint16_t fTol, 
   digitalWrite(PLBT ,HIGH);//pull-up
   digitalWrite(RECBT ,HIGH);//pull-up
   digitalWrite(BWBT ,HIGH);//pull-up
-  setPoint = stepper.encoder.getAngleMoved();//set manual move setpoint to current position
-
+  
   this->startPage();//show startpage
   delay(2000);//for 2 seconds
   this->resetAllButton(); 
   state = 'a';//start in idle
+  stepper.moveToEnd(1);
+  stepper.moveToAngle(30,HARD);
+  while(stepper.getMotorState());
+  stepper.encoder.setHome();
+  pidFlag = 1;//enable PID
+  setPoint = stepper.encoder.getAngleMoved();//set manual move setpoint to current position
 }
 
 void egoShield::loop(void)
@@ -393,6 +399,7 @@ void egoShield::timeMode(void)
   this->timePage(step,pidFlag);
   if(step == 0)//first put in how long to move at every step in mm
   {
+    digitalWrite(OPTO, HIGH);
     if(this->forwardBtn.btn == 1 && stepSize < 100)
     {
       this->forwardBtn.btn = 0;
@@ -417,7 +424,7 @@ void egoShield::timeMode(void)
       this->forwardBtn.btn = 0;
       interval=interval+250;
     }
-    else if(this->backwardsBtn.btn == 1 && interval >= 750)
+    else if(this->backwardsBtn.btn == 1 && interval >= (500 + this->shutterDelay))
     {
       this->backwardsBtn.btn = 0;
       interval=interval-250;
@@ -470,7 +477,7 @@ void egoShield::timeMode(void)
     }
     else if(runState == 2) //Waiting 250ms before firing trigger. (to stabilize rail and avoid vibrations)
     {
-      if(((millis() - j) > (250)))
+      if(((millis() - j) > this->shutterDelay))
       {
         digitalWrite(OPTO, LOW);   // sets the LED in the opto on triggering the camera
         runState = 3;
@@ -480,7 +487,7 @@ void egoShield::timeMode(void)
     }
     else if(runState == 3) //Waiting to release trigger
     {
-      if(((millis() - j) > (200)))
+      if(((millis() - j) > 200))
       {
         digitalWrite(OPTO, HIGH);  // sets the LED in the opto off releases the camera trigger
         runState = 4;
@@ -505,6 +512,9 @@ void egoShield::timeMode(void)
     if(stepper.isStalled())
     {
       stepper.moveToEnd(1);
+      stepper.moveToAngle(30,HARD);
+      while(stepper.getMotorState());
+      stepper.encoder.setHome();
       state = 'a';//idle state 
       step = 0;
       this->resetAllButton();
@@ -531,13 +541,13 @@ void egoShield::startPage(void)
 
 void egoShield::idlePage(bool pidMode, float pos)
 {
-  char buf[18];
+  char buf[20];
   String sBuf;
 
-  sBuf = "Encoder: ";
-  sBuf += (int32_t)pos;
-  sBuf += (char)176;
-  sBuf.toCharArray(buf, 18);
+  sBuf = "position: ";
+  sBuf += (int32_t)(pos/this->resolution);
+  sBuf += " mm";
+  sBuf.toCharArray(buf, 20);
 
   u8g2->firstPage();
   do {
@@ -614,7 +624,7 @@ void egoShield::recordPage(bool pidMode, bool recorded, uint8_t index, float pos
     }
     else
     {
-    sBuf = "Encoder: ";
+    sBuf = "position: ";
     sBuf += (int32_t)pos;
     sBuf += (char)176;
     sBuf.toCharArray(buf, 22);
