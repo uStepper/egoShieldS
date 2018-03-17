@@ -14,7 +14,7 @@ egoShield ego;
 
 void setup() {
   // put your setup code here, to run once:
-  ego.setup(ACCELERATION,VELOCITY,MICROSTEPPING,TOLERANCE,HYTERESIS,P,I,D,RESOLUTION);
+  ego.setup(ACCELERATION,VELOCITY,MICROSTEPPING,TOLERANCE,HYTERESIS,P,I,D,RESOLUTION,250);
 }
 
 void loop() {

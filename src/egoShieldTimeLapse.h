@@ -1,7 +1,7 @@
 /********************************************************************************************
 * 	 	File: 		egoShieldTimeLapse.h													*
-*		Version:    1.0.0                                           						*
-*      	Date: 		January 10th, 2018	                                    				*
+*		Version:    1.1.0                                           						*
+*      	Date: 		March 17th, 2018	                                    				*
 *      	Author: 	Mogens Groth Nicolaisen                                					*
 *                                                   										*	
 *********************************************************************************************
@@ -78,6 +78,11 @@
 *
 *	\author Mogens Groth Nicolaisen (mogens@ustepper.com)
 *	\par Change Log
+*	\version 1.1.0:
+* 	- changed order of events to move, fire shutter, delay
+*	- added an adjustable delay parameter - delaying the camera shutter after end of move
+*	- idle page encoder value is now displayed in mm
+*
 *	\version 1.0.0:
 * 	- changed button debouncing algorithm
 *	- fixed various minor bugs
@@ -183,26 +188,36 @@ static unsigned char logo_bits[] = {
    0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0x07, 0xfc, 0x00, 0x00, 0x00, 0x00,
    0x00, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x07, 0xf8, 0x00, 0x00, 0x00, 0x00 };
 
+/**
+ * @brief struct to hold information required to debounce button.
+ */
 typedef struct {
-	uint8_t debounce,
-	state,
-	holdCnt,
-	btn;
-	uint16_t time;
+	uint8_t debounce,			/**< Variable to hold current and past samples of the button GPIO pin*/
+	state,						/**< Current debounce state of the button*/
+	holdCnt,					/**< Counter to determined when the button should go from PRESSED to HOLD*/
+	btn;						/**< Variable to indicate a button press or release*/
+	uint16_t time;				/**< Counter to decide when a new button press should be given in the case of a HELD button*/
 } buttons;
 
-#define DEPRESSED 0
-#define PRESSED 1
-#define HOLD 2
+#define DEPRESSED 0				/** Definition of DEPRESSED button state */
+#define PRESSED 1				/** Definition of PRESSED button state */
+#define HOLD 2					/** Definition of HOLD button state */
 
-#define DBSAMPLEPERIOD 1UL
-#define HOLDTIME 75
-#define HOLDTICK 5
+#define HOLDTIME 75				/** Number of PRESSED samples before the button should be considered HOLD */
+#define HOLDTICK 5				/** Number of HOLD samples before a new button press should be issued */
 
 /** Macro for resetting watchdog timer */
 #define RESETWDT asm volatile("WDR \n\t")
 
-
+/** 
+*
+*	@brief Watchdog timer interrupt handler, for examining the buttons periodically
+*
+*	The Watchdog is configured to interrupt once every 16ms, to examine the IO state of the buttons, and performing the debouncing.
+*	The debouncing algorithm looks at the last five measured IO states of each button individually, to determine whether a button has finished bouncing or not.
+*	In order to see if the button is held or just pressed, a counter (seperate for each button) is incremented every time all the last five measurements are identical
+*	and if this counter reaches the value "HOLDTIME", the button are considered held. If any IO measurement is different from the last one, the counter is reset.
+*/
 extern "C" void WDT_vect(void) __attribute__ ((signal,used));
 
 class egoShield
@@ -234,6 +249,8 @@ public:
 	* @param[in]  	D takes in the PID D term.
 	*
 	* @param[in]  	res takes in the resolution of the drive in deg/mm.
+	*
+	* @param[in]  	shutterDelay in milliseconds between motor stopped and shutter fires.
 	*/
 	void egoShield::setup(uint16_t acc = 1500, 
 						  uint16_t vel = 1000, 
@@ -243,7 +260,8 @@ public:
 						  float P = 1.0, 
 						  float I = 0.02, 
 						  float D = 0.006,
-						  float res = 1);
+						  float res = 1,
+						  uint16_t shutterDelay = 250);
 	/**
 	* @brief      	Contains the main logic of the shield functionality, e.g. transition between states (idle, play, record and pause).
 	*/	
@@ -312,6 +330,8 @@ private:
           				playBtn       = {0x1F, DEPRESSED, 0, 0, 0},
           				recordBtn     = {0x1F, DEPRESSED, 0, 0, 0},
           				backwardsBtn  = {0x1F, DEPRESSED, 0, 0, 0};
+	/** This variable holds the value of the delay between motor stops and the shutter fires */
+    uint16_t shutterDelay;
 
     /**
 	* @brief      	Function for resetting the state of a button seperately
@@ -413,7 +433,7 @@ private:
 	*
 	* @param[in]  	pidMode tells if the display should show PID ON or PID OFF.
 	*
-	* @param[in]  	index tells which step we are at in the timelapse mode.
+	* @param[in]  	step tells which step we are at in the timelapse mode.
 	*/
 	void timePage(uint8_t step, bool pidMode);
 	/**
