@@ -544,7 +544,7 @@ void egoShield::idlePage(bool pidMode, float pos)
   char buf[20];
   String sBuf;
 
-  sBuf = "position: ";
+  sBuf = "Position: ";
   sBuf += (int32_t)(pos/this->resolution);
   sBuf += " mm";
   sBuf.toCharArray(buf, 20);
@@ -624,7 +624,7 @@ void egoShield::recordPage(bool pidMode, bool recorded, uint8_t index, float pos
     }
     else
     {
-    sBuf = "position: ";
+    sBuf = "Position: ";
     sBuf += (int32_t)pos;
     sBuf += (char)176;
     sBuf.toCharArray(buf, 22);
