@@ -18,6 +18,11 @@ http://ustepper.com/egoShield/docs/html/index.html
 
 
 ## Change Log
+1.0.1:
+- changed order of events to move, fire shutter, delay
+- added an adjustable delay parameter - delaying the camera shutter after end of move
+- idle page encoder value is now displayed in mm
+
 1.0.0:
 - changed button debouncing algorithm
 - fixed various minor bugs
