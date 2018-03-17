@@ -1,7 +1,7 @@
 /********************************************************************************************
 *       File:       egoShieldTimeLapse.cpp                                                  *
-*       Version:    1.0.0                                                                   *
-*       Date:       January 10th, 2018                                                      *
+*       Version:    1.1.0                                                                   *
+*       Date:       March 17th, 2018                                                        *
 *       Author:     Mogens Groth Nicolaisen                                                 *
 *                                                                                           * 
 *********************************************************************************************
@@ -22,7 +22,7 @@
 *                                                                                           *
 *   example:                                                                                *
 *                                                                                           *
-*   egoShield ego;                                                                          *
+*   egoShieldTimeLapse ego;                                                                 *
 *                                                                                           *
 *   void setup()                                                                            *
 *   {                                                                                       *

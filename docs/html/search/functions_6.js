@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['recordmode',['recordMode',['../classegoShield.html#a0dccc775a87134bf91cdf3c558013d01',1,'egoShield']]],
-  ['recordpage',['recordPage',['../classegoShield.html#a135a6b4942e467cc28f6251040e64d19',1,'egoShield']]]
+  ['manbackward',['manBackward',['../classegoShield.html#abe9101d456cd225907a821eed49750fb',1,'egoShield']]],
+  ['manforward',['manForward',['../classegoShield.html#a69e830dade5b53a3e6e7a46f441be994',1,'egoShield']]]
 ];

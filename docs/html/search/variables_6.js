@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['longpushflag',['longPushFlag',['../classegoShield.html#a4194146980bf4aea98893a54e0b9aa14',1,'egoShield']]],
-  ['loopmode',['loopMode',['../classegoShield.html#a1285947fe2c3e024229b8f681e9d8c1c',1,'egoShield']]]
+  ['interval',['interval',['../classegoShield.html#a3ca9b162a11dab97fa0f040860771c8c',1,'egoShield']]],
+  ['iterm',['iTerm',['../classegoShield.html#a49dc2d3220a28636978bce13ea5638bc',1,'egoShield']]]
 ];

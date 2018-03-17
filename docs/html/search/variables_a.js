@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['setpoint',['setPoint',['../classegoShield.html#a3d6b27161706494825b424eef65fad86',1,'egoShield']]],
-  ['state',['state',['../classegoShield.html#a3a01977ccd17e67fe908c6f2c4831eaf',1,'egoShield']]],
-  ['stepper',['stepper',['../classegoShield.html#a8ee5993511f384bcc22ac42363e0f904',1,'egoShield']]]
+  ['rec',['rec',['../classegoShield.html#a35bc04ba2d67492023e0a2f4b8f89927',1,'egoShield']]],
+  ['record',['record',['../classegoShield.html#ab039ce317b79475e1d16846800bef788',1,'egoShield']]],
+  ['resolution',['resolution',['../classegoShield.html#aaa2a2e8ea5b11bafb5c191132575e9af',1,'egoShield']]]
 ];
