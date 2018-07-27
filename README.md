@@ -14,7 +14,7 @@ https://github.com/olikraus/u8g2
 
 ## Documentation
 Documentation for the egoShield library can be found at the following URL:
-http://ustepper.com/egoShield/docs/html/index.html
+http://ustepper.com/EgoLapse/docs/html/index.html
 
 
 ## Change Log
