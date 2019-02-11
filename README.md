@@ -1,36 +1,18 @@
 # egoShield
 
-The library contains support for the uStepper egoShield. An example is included to show the functionality of the library, which is very simple.
-The library is supported in Arduino IDE 1.6.7, 1.6.8, 1.6.9, 1.6.10, 1.6.11, 1.6.12, 1.8.3, 1.8.4, 1.8.5.
+The library contains support for the uStepper S egoShield. Two examples are included to show the functionality of the library.
+The library is supported in Arduino IDE 1.8.8.
 
 For more information, visit www.ustepper.com
 
-## Prerequisites
-The library includes dependencies on other libraries. The uStepper library is needed for the stepper motor functionality as described here:
-https://github.com/uStepper/uStepper
+## Credit
+This library uses the U8G2 library (https://github.com/olikraus/u8g2/) for driver the LCD screen. 
+For the uStepper S Egoshield library, I had to make some small adjustments to this great U8G2 library, and I therefore copied the source into 
+my source files. this also removes the need to install third party libraries.
 
-Furthermore, the egoShield library makes use of functions from the u8g2 library from Olikraus here:
-https://github.com/olikraus/u8g2
-
-## Documentation
-Documentation for the egoShield library can be found at the following URL:
-http://ustepper.com/EgoLapse/docs/html/index.html
-
+All credit for the LCD part of this library goes to the author of the U8G2 library !
 
 ## Change Log
-1.1.0:
-- changed order of events to move, fire shutter, delay
-- added an adjustable delay parameter - delaying the camera shutter after end of move
-- idle page encoder value is now displayed in mm
-
-1.0.0:
-- changed button debouncing algorithm
-- fixed various minor bugs
-- finished functionality
-
-0.1.1:	
-- Corrected release version in library properties
-
 0.1.0:	
 - Initial release
 
