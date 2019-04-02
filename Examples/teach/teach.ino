@@ -7,7 +7,7 @@
 #define D 0.05 //D-term of the PID
 #define RESOLUTION 5 // Degree per mm of travel
 
-egoShieldTimeLapse ego;
+egoShieldTeach ego;
 
 void setup() {
   // put your setup code here, to run once:
