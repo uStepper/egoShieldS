@@ -62,32 +62,32 @@
  */
  
 #include "egoShieldS.h"
-
+#include "screen.h"
 egoShield *egoPointer;
 
 extern "C" {
-  void WDT_vect(void)
+  void TIMER4_COMPA_vect(void)
   {
-    sei();
+    uint8_t temp = TCCR3B, temp1 = TCCR1B;
+    TCCR3B &= ~(1 << CS30);
+    TCCR1B &= ~(1 << CS10);
     egoPointer->inputs();
-    WDTCSR |= (1<<WDIE);
+    TCCR3B = temp; 
+    TCCR1B = temp1; 
   }
 }
 
 egoShield::egoShield(void)
 {
-  u8g2 = new U8G2_SSD1306_128X64_NONAME_1_HW_I2C(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 }
 
 void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, float res, uint16_t shutterDelay)//brake mode?
 {
+  this->screen = new Screen(0);
+  this->screen->init();
   egoPointer = this;
-  //cli();
-  RESETWDT;
-  WDTCSR = (1 << WDCE) | (1 << WDE);
-  WDTCSR |= (1 << WDIE) | (1 << WDE);
 
- 
+  
   this->acceleration = acc;
   this->velocity = vel;
   this->pTerm = P;
@@ -99,10 +99,8 @@ void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, flo
   this->shutterDelay = shutterDelay;
 
   brakeFlag = 1;
-
   stepper.setup();
-  u8g2->begin();//start display
-  
+  //stepper.setup(PID,3200.0,5.5,4.1,0.0,true);
   // Check whether the uStepper is mounted on a motor with a magnet attached. If not, show an error message untill mounted correctly
   /*do
   {
@@ -119,10 +117,12 @@ void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, flo
   }
   while(stepper.encoder.detectMagnet() == 2 || stepper.encoder.detectMagnet() == 1);
 */
+
   stepper.encoder.setHome();
+  DRAWPAGE(this->startPage());
   stepper.setMaxVelocity(this->velocity);
   stepper.setMaxAcceleration(this->acceleration);
-  
+  Serial.begin(9600);
   pinMode(FWBT ,INPUT);
   pinMode(PLBT ,INPUT);
   pinMode(RECBT ,INPUT);
@@ -134,18 +134,24 @@ void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, flo
   digitalWrite(RECBT ,HIGH);//pull-up
   digitalWrite(BWBT ,HIGH);//pull-up
   
-  this->startPage();//show startpage
+  DRAWPAGE(this->startPage());//show startpage
   delay(2000);//for 2 seconds
   this->resetAllButton(); 
   state = 'a';//start in idle
-  stepper.moveToEnd(CCW);
+  stepper.moveToEnd(CW);
   stepper.encoder.setHome();
+
   stepper.moveToAngle(30);
   while(stepper.getMotorState());
   stepper.encoder.setHome();
   pidFlag = 1;//enable PID
   setPoint = stepper.encoder.getAngleMoved();//set manual move setpoint to current position
-
+  TCNT4 = 0;
+  ICR4 = 35000;
+  TIFR4 = 0;
+  TIMSK4 = (1 << OCIE4A);
+  TCCR4A = (1 << WGM41);
+  TCCR4B = (1 << WGM42) | (1 << WGM43) | ( 1 << CS41);
 }
 
 void egoShieldTimeLapse::loop(void)
@@ -174,6 +180,7 @@ void egoShieldTimeLapse::loop(void)
 void egoShieldTeach::loop(void)
 {
   setPoint = stepper.encoder.getAngleMoved();
+  
   switch (state)
   {
     case 'a'://if we are in idle
@@ -198,9 +205,9 @@ void egoShield::recordMode(void)
 {
   static bool continousForward = 0;
   static bool continousBackwards = 0;
-  
-  this->recordPage(pidFlag,0,place,setPoint);
 
+  DRAWPAGE(this->recordPage(pidFlag,0,place,setPoint));
+  
   if(continousForward)
   {
     if(this->forwardBtn.state != HOLD)
@@ -263,7 +270,7 @@ void egoShield::recordMode(void)
       place = 0;//Reset the array counter
       record = 1;//Record flag
     }
-    this->recordPage(pidFlag,1,place,setPoint);
+    DRAWPAGE(this->recordPage(pidFlag,1,place,setPoint));
     delay(500);
     if(record == 1)//If we have initialized recording
     {
@@ -283,7 +290,7 @@ void egoShield::recordMode(void)
     state = 'a';//stop state
     continousForward = 0;
     continousBackwards = 0;
-    this->idlePage(pidFlag,setPoint);
+    DRAWPAGE(this->idlePage(pidFlag,setPoint));
     while(this->playBtn.state == HOLD);
     this->resetAllButton(); 
   }  
@@ -294,8 +301,7 @@ void egoShield::idleMode(void)
   static bool continousForward = 0;
   static bool continousBackwards = 0;
 
-  this->idlePage(pidFlag,setPoint);
-
+  DRAWPAGE(this->idlePage(pidFlag,setPoint));
   if(continousForward)
   {
     if(this->forwardBtn.state != HOLD)
@@ -337,7 +343,7 @@ void egoShield::idleMode(void)
         //stepper.disablePid();
         stepper.stop();
       }
-      this->idlePage(pidFlag,setPoint);
+      DRAWPAGE(this->idlePage(pidFlag,setPoint));
       while(this->playBtn.state == HOLD);
     }
     this->resetButton(&playBtn);
@@ -389,7 +395,7 @@ void egoShield::playMode(void)
 {
   static uint8_t started = 0;
 
-  this->playPage(loopMode,pidFlag,place,0);
+  DRAWPAGE(this->playPage(loopMode,pidFlag,place,0));
   
   if(this->recordBtn.btn)//play/stop/pause
   {
@@ -419,7 +425,7 @@ void egoShield::playMode(void)
       loopMode = 0;
       started = 0;
       state = 'a';//idle
-      this->idlePage(pidFlag,setPoint);
+      DRAWPAGE(this->idlePage(pidFlag,setPoint));
       while(this->playBtn.state == HOLD);
     }
     this->resetAllButton(); 
@@ -427,7 +433,11 @@ void egoShield::playMode(void)
   }
   else if(started || loopMode)
   {
+    #ifdef ARDUINO_AVR_USTEPPER_S
     if(!stepper.driver.readRegister(VACTUAL))
+    #else
+    if(!stepper.getMotorState())
+    #endif
     {
       place++;//increment array counter
       if(loopMode && place > endmove)
@@ -462,7 +472,7 @@ void egoShield::changeVelocity(void)
 {
   for(;;)
   {
-    this->playPage(loopMode,pidFlag,place,1);
+    DRAWPAGE(this->playPage(loopMode,pidFlag,place,1));
     if(this->forwardBtn.btn == 1 && this->velocity <= 9900 && this->acceleration <= 19900)//increase speed
     {
       this->forwardBtn.btn = 0;
@@ -487,7 +497,7 @@ void egoShield::changeVelocity(void)
 
 void egoShield::pauseMode(void)
 {
-  this->pausePage(loopMode,pidFlag,place);
+  DRAWPAGE(this->pausePage(loopMode,pidFlag,place));
   if(this->playBtn.btn)//play/stop/pause
   {
     while(this->playBtn.state == PRESSED);
@@ -498,7 +508,7 @@ void egoShield::pauseMode(void)
     else      //Long press = stop
     {
       state = 'a';
-      this->idlePage(pidFlag,setPoint);
+      DRAWPAGE(this->idlePage(pidFlag,setPoint));
       while(this->playBtn.state == HOLD);
       this->resetAllButton();
     }
@@ -514,7 +524,7 @@ void egoShield::timeMode(void)
 
   stepper.getMotorState();
 
-  this->timePage(step,pidFlag);
+  DRAWPAGE(this->timePage(step,pidFlag));
   if(step == 0)//first put in how long to move at every step in mm
   {
     digitalWrite(OPTO, HIGH);
@@ -530,9 +540,8 @@ void egoShield::timeMode(void)
     }
     else if(this->recordBtn.btn == 1)
     {
-      delay(200);
-      this->recordBtn.btn = 0;
-      step = 1;
+        this->recordBtn.btn = 0;
+        step = 1;
     }
   }
   else if(step == 1)//next put in how long the intervals between moves are in milliseconds
@@ -579,7 +588,7 @@ void egoShield::timeMode(void)
     {
         setPoint += (stepSize*resolution);
         stepper.moveAngle((stepSize*resolution));
-        this->timePage(step,pidFlag);
+        DRAWPAGE(this->timePage(step,pidFlag));
         i = millis();
         runState = 1;
         return;
@@ -650,289 +659,515 @@ void egoShield::inputs(void)
     this->debounce(&backwardsBtn,(PINB >> 4) & 0x01);
 }
 
-unsigned char* egoShield::loadVideoBuffer(unsigned char *data, unsigned char length)
-{
-  int i = 0;
-  for(i = 0; i < length; i++)
-  {
-    this->videoBuffer[i] = pgm_read_byte(&(data[i]));
-  }
-
-  return this->videoBuffer;
-}
-
 void egoShield::startPage(void)
 {
-  u8g2->firstPage();
-  do {
-    u8g2->drawXBM(19, 20, logo_width, logo_height, this->loadVideoBuffer(logo_bits, sizeof(logo_bits)/sizeof(logo_bits[0])));
-  } while ( u8g2->nextPage() );
+  this->screen->clrScreen();
+  this->screen->drawImage(logoBmp, 10, 0, 112, 48);
 }
 
 void egoShield::idlePage(bool pidMode, float pos)
 {
+  static int32_t position; 
+  static bool lastPidMode;
   char buf[20];
   String sBuf;
 
-  sBuf = "Position: ";
-  sBuf += (int32_t)(pos/this->resolution);
-  sBuf += " mm";
-  sBuf.toCharArray(buf, 20);
-
-  u8g2->firstPage();
-  do {
-    u8g2->drawBox(1, 1, 128, 12);
-    u8g2->drawBox(1, 48, 128, 68);
-    u8g2->setFontMode(0);
-    u8g2->setDrawColor(0);
-    u8g2->setFontDirection(0);
-    u8g2->setFont(u8g2_font_6x10_tf);
-    
-    //Bottom bar
-    u8g2->drawXBM(5, 51, en_width, en_height, this->loadVideoBuffer(bw_bits, sizeof(bw_bits)/sizeof(bw_bits[0]))); 
-    u8g2->drawXBM(112, 51, en_width, en_height, this->loadVideoBuffer(fw_bits, sizeof(fw_bits)/sizeof(fw_bits[0]))); 
-    u8g2->drawXBM(32, 50, play_width, play_height, this->loadVideoBuffer(play_bits, sizeof(play_bits)/sizeof(play_bits[0])));  
-    u8g2->drawXBM(43, 51, tt_width, tt_height, this->loadVideoBuffer(stop_bits, sizeof(stop_bits)/sizeof(stop_bits[0])));  
-    u8g2->drawXBM(71, 51, tt_width, tt_height, this->loadVideoBuffer(rec_bits, sizeof(rec_bits)/sizeof(rec_bits[0]))); 
-    u8g2->drawXBM(85, 51, tt_width, tt_height, this->loadVideoBuffer(pse_bits, sizeof(pse_bits)/sizeof(pse_bits[0]))); 
-
-    //Mode
-    u8g2->drawStr(2,10,"Idle");
+  if(this->lastPage != IDLEPAGE)
+  {
+    this->screen->clrScreen();
+    lastPidMode = pidMode;
+    this->lastPage = IDLEPAGE;
+    position = (int32_t)(pos/this->resolution);
+    sBuf = "Position: ";
+    sBuf += position;
+    sBuf += " mm";
+    sBuf.toCharArray(buf, 20);
+    this->screen->drawRect(0,0,127,7,1);
+    this->screen->drawRect(0,48,127,63,1);
+    this->screen->printString("Idle",2,0,1);
     if(pidMode)
     {
-      u8g2->drawStr(45,10,"PID ON");
+      this->screen->printString("PID ON ",45,0,1);
     }
     else
     {
-      u8g2->drawStr(45,10,"PID OFF");
+      this->screen->printString("PID OFF",45,0,1);
     }
-    u8g2->setFontMode(1);
-    u8g2->setDrawColor(1);
-    u8g2->drawStr(2,35,buf);
-  } while ( u8g2->nextPage() );  
+    this->screen->drawImage(fastRewindBmp, 0, 48, 16, 16, 1);
+    this->screen->drawImage(playBmp, 28, 48, 16, 16, 1);
+    this->screen->drawImage(stopBmp, 39, 48, 16, 16, 1);
+    this->screen->drawImage(recordBmp, 67, 48, 16, 16, 1);
+    this->screen->drawImage(pauseBmp, 81, 48, 16, 16, 1);
+    this->screen->drawImage(fastForwardBmp, 112, 48, 16, 16, 1);
+    sBuf.toCharArray(buf, 20);
+    this->screen->printString((const uint8_t*)buf,2,24,0);
+  }
+  else
+  {
+    if((int32_t)(pos/this->resolution) != position)
+    {
+      position = (int32_t)(pos/this->resolution);
+
+      sBuf = position;
+      sBuf += " mm";
+      sBuf.toCharArray(buf, 20);
+
+      this->screen->drawRect(62,24,127,31,0);
+      this->screen->printString((const uint8_t*)buf,62,24,0);
+    }
+
+    if(pidMode != lastPidMode)
+    {
+      lastPidMode = pidMode;
+      if(pidMode)
+      {
+        this->screen->printString("PID ON ",45,0,1);
+      }
+      else
+      {
+        this->screen->printString("PID OFF",45,0,1);
+      }
+    }
+  }
 }
 
 void egoShield::recordPage(bool pidMode, bool recorded, uint8_t index, float pos)
 {
-  char buf[22];//char array buffer
+  static int32_t position; 
+  static bool lastPidMode, updatePosition;
+  char buf[22];
   String sBuf;
-    
-  u8g2->firstPage();
-  do 
-  {
-    u8g2->drawBox(1, 1, 128, 12);
-    u8g2->drawBox(1, 48, 128, 68);
-    u8g2->setFontMode(0);
-    u8g2->setDrawColor(0);
-    u8g2->setFontDirection(0);
-    u8g2->setFont(u8g2_font_6x10_tf);
-    
-    u8g2->drawXBM(5, 51, en_width, en_height, this->loadVideoBuffer(bw_bits, sizeof(bw_bits)/sizeof(bw_bits[0])));
-    u8g2->drawXBM(112, 51, en_width, en_height, this->loadVideoBuffer(fw_bits, sizeof(fw_bits)/sizeof(fw_bits[0])));
-    u8g2->drawXBM(38, 51, tt_width, tt_height, this->loadVideoBuffer(stop_bits, sizeof(stop_bits)/sizeof(stop_bits[0])));
-    u8g2->drawXBM(76, 51, tt_width, tt_height, this->loadVideoBuffer(rec_bits, sizeof(rec_bits)/sizeof(rec_bits[0])));
 
-    //Mode
-    u8g2->drawStr(2,10,"Record");
+  if(this->lastPage != RECORDPAGE)
+  {
+    this->screen->clrScreen();
+    lastPidMode = pidMode;
+    this->lastPage = RECORDPAGE;
+    position = (int32_t)(pos/this->resolution);
+    sBuf = "Position: ";
+    sBuf += position;
+    sBuf += " mm";
+    sBuf.toCharArray(buf, 20);
+    this->screen->drawRect(0,0,127,7,1);
+    this->screen->drawRect(0,48,127,63,1);
     if(pidMode)
     {
-      u8g2->drawStr(45,10,"PID ON");
+      this->screen->printString("PID ON ",45,0,1);
     }
     else
     {
-      u8g2->drawStr(45,10,"PID OFF");
+      this->screen->printString("PID OFF",45,0,1);
     }
-    u8g2->setFontMode(1);
-    u8g2->setDrawColor(1);
+    this->screen->drawImage(fastRewindBmp, 0, 48, 16, 16, 1);
+    this->screen->drawImage(stopBmp, 35, 48, 16, 16, 1);
+    this->screen->drawImage(recordBmp, 73, 48, 16, 16, 1);
+    this->screen->drawImage(fastForwardBmp, 112, 48, 16, 16, 1);
+
     if(recorded)
     {
-      sBuf = "Position ";
+      sBuf = "Position: ";
       sBuf += index;
       sBuf += " recorded";
       sBuf.toCharArray(buf, 22);
-      u8g2->drawStr(2,35,buf);
+      this->screen->printString((const uint8_t*)buf,2,24,0);
+      updatePosition = 1;
     }
     else
     {
-    sBuf = "Position: ";
-    sBuf += (int32_t)(pos/this->resolution);
-    sBuf += " mm";
-    sBuf.toCharArray(buf, 22);
-    u8g2->drawStr(2,35,buf);
+      sBuf = "Position: ";
+      sBuf += (int32_t)(pos/this->resolution);
+      sBuf += " mm";
+      sBuf.toCharArray(buf, 22);
+      this->screen->printString((const uint8_t*)buf,2,24,0);
+      updatePosition = 0;
     }
-  } while ( u8g2->nextPage() );  
+  }
+  else
+  {
+    if(recorded)
+    {
+      sBuf = "Position: ";
+      sBuf += index;
+      sBuf += " recorded";
+      sBuf.toCharArray(buf, 22);
+      this->screen->drawRect(0,24,127,31,0);
+      this->screen->printString((const uint8_t*)buf,2,24,0);
+      updatePosition = 1;
+    }
+    else
+    {
+      if((int32_t)(pos/this->resolution) != position || updatePosition)
+      {
+        updatePosition = 0;
+        position = (int32_t)(pos/this->resolution);
+
+        sBuf = position;
+        sBuf += " mm";
+        sBuf.toCharArray(buf, 20);
+
+        this->screen->drawRect(56,24,127,31,0);
+        this->screen->printString((const uint8_t*)buf,56,24,0);
+      }
+    }
+
+    if(pidMode != lastPidMode)
+    {
+      this->screen->drawRect(0,0,127,7,1);
+      lastPidMode = pidMode;
+      if(pidMode)
+      {
+        this->screen->printString("PID ON ",45,0,1);
+      }
+      else
+      {
+        this->screen->printString("PID OFF",45,0,1);
+      }
+    }
+  }
 }
 
 void egoShield::playPage(bool loopMode, bool pidMode, uint8_t index, bool mode)
 {
-  char buf[5];//char array buffer
+  static int32_t position; 
+  static bool lastPidMode, lastMode, lastLoopMode, lastIndex;
+  static float lastVelocity;
+  char buf[22];
+  String sBuf;
 
-  u8g2->firstPage();
-  do 
+  if(this->lastPage != PLAYPAGE)
   {
-    u8g2->drawBox(1, 1, 128, 12);
-    u8g2->drawBox(1, 48, 128, 68);
-    u8g2->setFontMode(0);
-    u8g2->setDrawColor(0);
-    u8g2->setFontDirection(0);
-    u8g2->setFont(u8g2_font_6x10_tf);
+    this->screen->clrScreen();
+    lastPidMode = pidMode;
+    this->lastPage = PLAYPAGE;
+    this->screen->drawRect(0,0,127,7,1);
+    this->screen->drawRect(0,48,127,63,1);
+    this->screen->printString("Play",2,0,1);
+    if(pidMode)
+    {
+      this->screen->printString("PID ON ",45,0,1);
+    }
+    else
+    {
+      this->screen->printString("PID OFF",45,0,1);
+    }
+    this->screen->drawImage(fastRewindBmp, 0, 48, 16, 16, 1);
+    this->screen->drawImage(playBmp, 34, 48, 16, 16, 1);
+    this->screen->drawImage(stopBmp, 48, 48, 16, 16, 1);
+    this->screen->drawImage(pauseBmp, 79, 48, 16, 16, 1);
+    this->screen->drawImage(fastForwardBmp, 112, 48, 16, 16, 1);
+
+    lastLoopMode = loopMode;
 
     if(loopMode)
     {
-      u8g2->drawXBM(110, 2, loop_width, loop_height, this->loadVideoBuffer(loop_bits, sizeof(loop_bits)/sizeof(loop_bits[0])));
+      this->screen->drawImage(repeatBmp, 112, 0, 16, 8, 1);
     }
-    
-    //Bottom bar
-    u8g2->drawXBM(5, 51, en_width, en_height, this->loadVideoBuffer(bw_bits, sizeof(bw_bits)/sizeof(bw_bits[0]))); 
-    u8g2->drawXBM(112, 51, en_width, en_height, this->loadVideoBuffer(fw_bits, sizeof(fw_bits)/sizeof(fw_bits[0]))); 
-    u8g2->drawXBM(32, 50, play_width, play_height, this->loadVideoBuffer(play_bits, sizeof(play_bits)/sizeof(play_bits[0])));  
-    u8g2->drawXBM(43, 51, tt_width, tt_height, this->loadVideoBuffer(stop_bits, sizeof(stop_bits)/sizeof(stop_bits[0])));  
-    u8g2->drawXBM(77, 51, tt_width, tt_height, this->loadVideoBuffer(pse_bits, sizeof(pse_bits)/sizeof(pse_bits[0]))); 
 
-    //Mode
-    u8g2->drawStr(2,10,"Play");
-    if(pidMode)
-    {
-      u8g2->drawStr(45,10,"PID ON");
-    }
-    else
-    {
-      u8g2->drawStr(45,10,"PID OFF");
-    }
-    u8g2->setFontMode(1);
-    u8g2->setDrawColor(1);
+    lastMode = mode;
     if(mode)
     {
-      u8g2->drawStr(2,25,"Adjust velocity");
+      this->screen->printString("Adjust velocity",2,24,0);
     }
     else
     {
-      u8g2->drawStr(2,25,"Moving to pos");
+      this->screen->printString("Moving to pos",2,24,0);
       String(index).toCharArray(buf, 5);
-      u8g2->drawStr(90,25,buf);
+      this->screen->printString((const uint8_t*)buf,90,24,0);
     }
-    u8g2->drawStr(2,40,"Speed:");
+    lastVelocity = this->velocity;
+    this->screen->printString("Speed: ",2,32,0);
     String(this->velocity).toCharArray(buf, 5);
-    u8g2->drawStr(60,40,buf);
-  } while ( u8g2->nextPage() );
+    this->screen->printString((const uint8_t*)buf,60,32,0);
+  }
+  else
+  {
+    if(lastVelocity != this->velocity)
+    {
+      String(this->velocity).toCharArray(buf, 5);
+      this->screen->printString((const uint8_t*)buf,60,32,0);
+    }
+
+    lastVelocity = this->velocity;
+
+    if(mode)
+    {
+      if(lastMode != mode)
+      {
+        this->screen->drawRect(0,24,127,31,0);
+        this->screen->printString("Adjust velocity",2,24,0);
+      }
+    }
+    else
+    {
+      if(lastMode != mode)
+      {
+        this->screen->drawRect(0,24,127,31,0);
+        this->screen->printString("Moving to pos",2,24,0);
+        String(index).toCharArray(buf, 5);
+        this->screen->printString((const uint8_t*)buf,90,24,0);
+      }
+      else
+      {
+        if(lastIndex != index)
+        {
+          String(index).toCharArray(buf, 5);
+          this->screen->printString((const uint8_t*)buf,90,24,0);
+        }
+      }
+      lastIndex = index;
+    }
+
+    lastMode = mode;
+
+    if(loopMode != lastLoopMode)
+    {
+      this->screen->drawRect(110,0,127,7,1);
+      if(loopMode)
+      {
+        this->screen->drawImage(repeatBmp, 112, 0, 16, 8, 1);
+      }
+    }
+    lastLoopMode = loopMode;
+
+    if(pidMode != lastPidMode)
+    {
+      this->screen->drawRect(0,0,127,7,1);
+      lastPidMode = pidMode;
+      if(pidMode)
+      {
+        this->screen->printString("PID ON ",45,0,1);
+      }
+      else
+      {
+        this->screen->printString("PID OFF",45,0,1);
+      }
+    }
+  }
 }
 
 void egoShield::pausePage(bool loopMode, bool pidMode, uint8_t index)
 {
-  char buf[3];//char array buffer
+  static bool lastPidMode, lastLoopMode;
+  char buf[22];
+  String sBuf;
 
-  u8g2->firstPage();
-  do 
+  if(this->lastPage != PAUSEPAGE)
   {
-    u8g2->drawBox(1, 1, 128, 12);
-    u8g2->drawBox(1, 48, 128, 68);
-    u8g2->setFontMode(0);
-    u8g2->setDrawColor(0);
-    u8g2->setFontDirection(0);
-    u8g2->setFont(u8g2_font_6x10_tf);
-    
-    if(loopMode)
-    {
-      u8g2->drawXBM(110, 2, loop_width, loop_height, this->loadVideoBuffer(loop_bits, sizeof(loop_bits)/sizeof(loop_bits[0])));
-    }
-    
-    //Bottom bar
-    u8g2->drawXBM(32, 50, play_width, play_height, this->loadVideoBuffer(play_bits, sizeof(play_bits)/sizeof(play_bits[0])));
-    u8g2->drawXBM(43, 51, tt_width, tt_height, this->loadVideoBuffer(stop_bits, sizeof(stop_bits)/sizeof(stop_bits[0])));
-
-    //Mode
-    u8g2->drawStr(2,10,"Pause");
+    lastPidMode = pidMode;
+    this->lastPage = PAUSEPAGE;
+    this->screen->clrScreen();
+    this->screen->drawRect(0,0,127,7,1);
+    this->screen->drawRect(0,48,127,63,1);
+    this->screen->printString("Pause",2,0,1);
     if(pidMode)
     {
-      u8g2->drawStr(45,10,"PID ON");
+      this->screen->printString("PID ON ",45,0,1);
     }
     else
     {
-      u8g2->drawStr(45,10,"PID OFF");
+      this->screen->printString("PID OFF",45,0,1);
     }
-    u8g2->setFontMode(1);
-    u8g2->setDrawColor(1);
-    u8g2->drawStr(2,35,"Paused at pos");
-    String(index).toCharArray(buf, 3);
-    u8g2->drawStr(90,35,buf);
-  } while ( u8g2->nextPage() );  
+    this->screen->drawImage(playBmp, 28, 48, 16, 16, 1);
+    this->screen->drawImage(stopBmp, 35, 48, 16, 16, 1);
+
+    lastLoopMode = loopMode;
+
+    if(loopMode)
+    {
+      this->screen->drawImage(repeatBmp, 112, 48, 16, 16, 1);
+    }
+
+    this->screen->printString("Paused at Position ",2,24,1);
+    String(index).toCharArray(buf, 5);
+    this->screen->printString((const uint8_t*)buf,90,24,1);
+  }
+  else
+  {
+    if(loopMode != lastLoopMode)
+    {
+      this->screen->drawRect(110,0,127,7,1);
+      if(loopMode)
+      {
+        this->screen->drawImage(repeatBmp, 112, 48, 16, 16, 1);
+      }
+    }
+
+    lastLoopMode = loopMode;
+
+    if(pidMode != lastPidMode)
+    {
+      this->screen->drawRect(45,0,127,7,1);
+      lastPidMode = pidMode;
+      if(pidMode)
+      {
+        this->screen->printString("PID ON ",45,0,1);
+      }
+      else
+      {
+        this->screen->printString("PID OFF",45,0,1);
+      }
+    }
+  }
 }
 
 
 void egoShield::timePage(uint8_t step, bool pidMode)
 {
-  char buf[22];//char array buffer
+
+  static bool lastPidMode;
+  static uint8_t lastStep;
+  static float lastStepSize, lastInterval;
+  int32_t angle;
+  static int32_t lastAngle;
+  char buf[22];
   String sBuf;
 
-  u8g2->firstPage();
-  do 
+  if(this->lastPage != TIMEPAGE)
   {
-    u8g2->drawBox(1, 1, 128, 12);
-    u8g2->drawBox(1, 48, 128, 68);
-    u8g2->setFontMode(0);
-    u8g2->setDrawColor(0);
-    u8g2->setFontDirection(0);
-    u8g2->setFont(u8g2_font_6x10_tf);
+    lastPidMode = pidMode;
+    this->lastPage = TIMEPAGE;
+    this->screen->clrScreen();
+    this->screen->drawRect(0,0,127,7,1);
+    this->screen->drawRect(0,48,127,63,1);
+    this->screen->printString("Time",2,0,1);
+
 
     if(step == 0)//we are waiting for the distance interval to be put in
     {
-      u8g2->drawXBM(5, 51, en_width, en_height, this->loadVideoBuffer(bw_bits, sizeof(bw_bits)/sizeof(bw_bits[0])));
-      u8g2->drawXBM(112, 51, en_width, en_height, this->loadVideoBuffer(fw_bits, sizeof(fw_bits)/sizeof(fw_bits[0])));
-      u8g2->drawXBM(76, 51, tt_width, tt_height, this->loadVideoBuffer(rec_bits, sizeof(rec_bits)/sizeof(rec_bits[0])));
-      u8g2->setFontMode(1);
-      u8g2->setDrawColor(1);
-      u8g2->drawStr(115,24,"<-");
-      u8g2->setFontMode(0);
-      u8g2->setDrawColor(0);
+      this->screen->drawImage(fastRewindBmp, 0, 48, 16, 16, 1);
+      this->screen->drawImage(recordBmp, 73, 48, 16, 16, 1);
+      this->screen->drawImage(fastForwardBmp, 112, 48, 16, 16, 1);
+     this->screen->printString("<-",115,24,0);
     }
     else if(step == 1)//we are waiting for the time interval to be put in
     {
-      u8g2->drawXBM(5, 51, en_width, en_height, this->loadVideoBuffer(bw_bits, sizeof(bw_bits)/sizeof(bw_bits[0])));
-      u8g2->drawXBM(112, 51, en_width, en_height, this->loadVideoBuffer(fw_bits, sizeof(fw_bits)/sizeof(fw_bits[0])));
-      u8g2->drawXBM(76, 51, tt_width, tt_height, this->loadVideoBuffer(rec_bits, sizeof(rec_bits)/sizeof(rec_bits[0])));
-      u8g2->setFontMode(1);
-      u8g2->setDrawColor(1);
-      u8g2->drawStr(115,34,"<-");
-      u8g2->setFontMode(0);
-      u8g2->setDrawColor(0);
+      this->screen->drawImage(fastRewindBmp, 0, 48, 16, 16, 1);
+      this->screen->drawImage(recordBmp, 73, 48, 16, 16, 1);
+      this->screen->drawImage(fastForwardBmp, 112, 48, 16, 16, 1);
+      this->screen->printString("<-",115,32,0);
     }
     else if(step == 2)//we are waiting for play to be issued
     {
-      u8g2->drawXBM(32, 50, play_width, play_height, this->loadVideoBuffer(play_bits, sizeof(play_bits)/sizeof(play_bits[0])));
-      u8g2->drawXBM(38, 51, tt_width, tt_height, this->loadVideoBuffer(stop_bits, sizeof(stop_bits)/sizeof(stop_bits[0])));
+      this->screen->drawImage(playBmp, 28, 48, 16, 16, 1);
+      this->screen->drawImage(stopBmp, 35, 48, 16, 16, 1);
     }
     else if(step == 3)//we are playing sequence until end of rail
     {
-      u8g2->drawXBM(38, 51, tt_width, tt_height, this->loadVideoBuffer(stop_bits, sizeof(stop_bits)/sizeof(stop_bits[0])));
+      this->screen->drawImage(stopBmp, 35, 48, 16, 16, 1);
     }
 
-    u8g2->drawStr(2,10,"Time");
+    lastStep = step;
+    this->screen->drawRect(45,0,127,7,1);
     if(pidMode)
     {
-      u8g2->drawStr(45,10,"PID ON");
+      this->screen->printString("PID ON ",45,0,1);
     }
     else
     {
-      u8g2->drawStr(45,10,"PID OFF");
+      this->screen->printString("PID OFF",45,0,1);
     }
-    u8g2->setFontMode(1);
-    u8g2->setDrawColor(1);
+
+    angle = (int32_t)(stepper.encoder.getAngleMoved()/resolution);
+
     sBuf = "Stepsize:  ";
     sBuf += stepSize;
+    lastStepSize = stepSize;
     sBuf += " mm";
     sBuf.toCharArray(buf, 22);
-    u8g2->drawStr(2,24,buf);
+    this->screen->printString((const uint8_t*)buf,2,24,0);
     sBuf = "Interval:  ";
     sBuf += interval*0.001;
+    lastInterval = interval;
     sBuf += " s";
     sBuf.toCharArray(buf, 22);
-    u8g2->drawStr(2,34,buf); 
+    this->screen->printString((const uint8_t*)buf,2,32,0);
     sBuf = "Encoder:   ";
-    sBuf += (int32_t)(stepper.encoder.getAngleMoved()/resolution);
+    sBuf += angle;
+    lastAngle = angle;
     sBuf += " mm";
     sBuf.toCharArray(buf, 22);
-    u8g2->drawStr(2,44,buf);
-  } while ( u8g2->nextPage() );  
+    this->screen->printString((const uint8_t*)buf,2,40,0);
+  }
+  else
+  {
+    angle = (int32_t)(stepper.encoder.getAngleMoved()/resolution);
+
+    if(lastStepSize != stepSize)
+    {
+      sBuf = "Stepsize:  ";
+      sBuf += stepSize;
+      lastStepSize = stepSize;
+      sBuf += " mm";
+      sBuf.toCharArray(buf, 22);
+      this->screen->drawRect(0,24,114,31,0);
+      this->screen->printString((const uint8_t*)buf,2,24,0);
+    }
+
+    if(lastInterval != interval)
+    {
+      sBuf = "Interval:  ";
+      sBuf += interval*0.001;
+      lastInterval = interval;
+      sBuf += " s";
+      sBuf.toCharArray(buf, 22);
+      this->screen->drawRect(9,32,114,39,0);
+      this->screen->printString((const uint8_t*)buf,2,32,0);
+    }
+
+    if(lastAngle != angle)
+    {
+      sBuf = angle;
+      lastAngle = angle;
+      sBuf += " mm";
+      sBuf.toCharArray(buf, 22);
+      this->screen->drawRect(68,40,114,47,0);
+      this->screen->printString((const uint8_t*)buf,68,40,0);
+    }
+
+    if(step != lastStep)
+    {
+      this->screen->drawRect(0,48,127,63,1);
+      this->screen->drawRect(115,24,127,39,0);
+      if(step == 0)//we are waiting for the distance interval to be put in
+      {
+        this->screen->drawImage(fastRewindBmp, 0, 48, 16, 16, 1);
+        this->screen->drawImage(recordBmp, 73, 48, 16, 16, 1);
+        this->screen->drawImage(fastForwardBmp, 112, 48, 16, 16, 1);
+        this->screen->printString("<-",115,24,0);
+      }
+      else if(step == 1)//we are waiting for the time interval to be put in
+      {
+        this->screen->drawImage(fastRewindBmp, 0, 48, 16, 16, 1);
+        this->screen->drawImage(recordBmp, 73, 48, 16, 16, 1);
+        this->screen->drawImage(fastForwardBmp, 112, 48, 16, 16, 1);
+        this->screen->printString("<-",115,32,0);
+      }
+      else if(step == 2)//we are waiting for play to be issued
+      {
+        this->screen->drawImage(playBmp, 35, 48, 16, 16, 1);
+      }
+      else if(step == 3)//we are playing sequence until end of rail
+      {
+        this->screen->drawImage(stopBmp, 35, 48, 16, 16, 1);
+      }
+
+      lastStep = step;
+    }
+
+    if(pidMode != lastPidMode)
+    {
+      this->screen->drawRect(45,0,127,7,1);
+      lastPidMode = pidMode;
+      if(pidMode)
+      {
+        this->screen->printString("PID ON ",45,0,1);
+      }
+      else
+      {
+        this->screen->printString("PID OFF",45,0,1);
+      }
+    }
+  }
 }
 
 void egoShield::debounce(buttons *btn, uint8_t sample)

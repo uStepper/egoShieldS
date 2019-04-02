@@ -1,7 +1,7 @@
 #include <egoShieldS.h>
 
 #define ACCELERATION 4000 //Acceleration used during PLAY
-#define VELOCITY 100 //Velocity used during PLAY
+#define VELOCITY 400 //Velocity used during PLAY
 #define P 1.0 //P-term of the PID
 #define I 0.1 //I-term of the PID
 #define D 0.05 //D-term of the PID
