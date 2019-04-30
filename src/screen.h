@@ -71,7 +71,6 @@
 							if(this->busFailure)\
 							{\
 								sei();\
-								Serial.println("abekat");\
 								return;\
 							}\
 

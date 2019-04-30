@@ -46,12 +46,12 @@ void Screen::init()
 	_SFR_MEM8(this->twsr) = 0;
 	_SFR_MEM8(this->twcr) = 0;
 
-	// set bit rate register to 12 to obtain 400kHz scl frequency (in combination with no prescaling!)
-	_SFR_MEM8(this->twbr) = 30;
+	// set bit rate register to 72 to obtain 100kHz scl frequency (in combination with no prescaling!)
+	_SFR_MEM8(this->twbr) = 72;
 	// no prescaler
 	_SFR_MEM8(this->twsr) &= 0xFC;
 	// enable twi module, acks, and twi interrupt
-	_SFR_MEM8(this->twcr) = _BV(TWEN0) | _BV(TWIE0);
+	_SFR_MEM8(this->twcr) = _BV(TWEN0);
 
 	SSD1306_SEND_CMD(SSD1306_DISPLAY_OFF);
     SSD1306_SEND_CMD(SSD1306_SET_DISPLAY_CLOCK_DIV_RATIO);
@@ -79,7 +79,7 @@ void Screen::init()
     SSD1306_SEND_CMD(SSD1306_NORMAL_DISPLAY);
 	SSD1306_SEND_CMD(SSD1306_DISPLAY_ON);
 
-	//clrScreen();
+	clrScreen();
 }
 
 void* Screen::operator new(size_t size)
@@ -96,7 +96,6 @@ bool Screen::waitForAck()
 	{
 		if(millis() - time > 10)
 		{
-			Serial.println("RESET!!!");
 			return 1;
 		}	
 	};
@@ -110,7 +109,7 @@ void Screen::clrScreen()
 	{
 		return;
 	}
-
+	
 	SSD1306_SEND_CMD(SSD1306_SET_COLUMN_ADDR);
 	SSD1306_SEND_CMD(0);
 	SSD1306_SEND_CMD(127);
@@ -121,22 +120,23 @@ void Screen::clrScreen()
 
 	// Send start address
 	_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWEA0) | (1 << TWINT0) | (1 << TWSTA0);
-	if(this->waitForAck()){this->busFailure = 1; return;}
+	if(this->waitForAck()){this->busFailure = 1;  return;}
 	_SFR_MEM8(this->twdr) = SSD1306_ADDR<<1;
 	_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWINT0) | (1 << TWEA0);
-	if(this->waitForAck()){this->busFailure = 1; return;}
+	if(this->waitForAck()){this->busFailure = 1;  return;}
 	_SFR_MEM8(this->twdr) = SSD1306_DATA_CONTINUE;
 	_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWINT0) | (1 << TWEA0);
-	if(this->waitForAck()){this->busFailure = 1; return;}
+	if(this->waitForAck()){this->busFailure = 1;  return;}
 
 	for (uint16_t b=0; b < 128*8; b++)		// Send data
 	{
 		_SFR_MEM8(this->twdr) = 0x00;
 		_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWINT0) | (1 << TWEA0);									// Clear TWINT to proceed
-		if(this->waitForAck()){this->busFailure = 1; return;}											// Wait for TWI to be ready
+		if(this->waitForAck()){this->busFailure = 1;  return;}											// Wait for TWI to be ready
 	}
 
 	_SFR_MEM8(this->twcr) = (1 << TWEN0)| (1 << TWINT0) | (1 << TWSTO0);									// Send STOP
+	 
 }
 
 void Screen::drawImage(const uint8_t *image, uint8_t x, uint8_t y, uint8_t width, uint8_t height, bool invert)
@@ -148,7 +148,7 @@ void Screen::drawImage(const uint8_t *image, uint8_t x, uint8_t y, uint8_t width
 	{
 		return;
 	}
-
+	
 	SSD1306_SEND_CMD(SSD1306_SET_COLUMN_ADDR);
 	SSD1306_SEND_CMD(x);
 	SSD1306_SEND_CMD(x+width-1);
@@ -159,13 +159,13 @@ void Screen::drawImage(const uint8_t *image, uint8_t x, uint8_t y, uint8_t width
 
 	// Send start address
 	_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWEA0) | (1 << TWINT0) | (1 << TWSTA0);
-	if(this->waitForAck()){this->busFailure = 1; return;}
+	if(this->waitForAck()){this->busFailure = 1;  return;}
 	_SFR_MEM8(this->twdr) = SSD1306_ADDR<<1;
 	_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWINT0) | (1 << TWEA0);
-	if(this->waitForAck()){this->busFailure = 1; return;}
+	if(this->waitForAck()){this->busFailure = 1;  return;}
 	_SFR_MEM8(this->twdr) = SSD1306_DATA_CONTINUE;
 	_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWINT0) | (1 << TWEA0);
-	if(this->waitForAck()){this->busFailure = 1; return;}
+	if(this->waitForAck()){this->busFailure = 1;  return;}
 	for(i = (width*(height/8))-1; i > 0; i--)
 	{
 		pattern = pgm_read_byte(&(image[i]));
@@ -178,10 +178,11 @@ void Screen::drawImage(const uint8_t *image, uint8_t x, uint8_t y, uint8_t width
 		_SFR_MEM8(this->twdr) = pattern;
 			
 		_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWINT0) | (1 << TWEA0);									// Clear TWINT to proceed
-		if(this->waitForAck()){this->busFailure = 1; return;}											// Wait for TWI to be ready
+		if(this->waitForAck()){this->busFailure = 1;  return;}											// Wait for TWI to be ready
 	}
 
 	_SFR_MEM8(this->twcr) = (1 << TWEN0)| (1 << TWINT0) | (1 << TWSTO0);									// Send STOP
+	 
 }
 
 void Screen::printString(const uint8_t *string, uint8_t x, uint8_t y, bool invert)
@@ -217,13 +218,13 @@ void Screen::printString(const uint8_t *string, uint8_t x, uint8_t y, bool inver
 
 	// Send start address
 	_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWEA0) | (1 << TWINT0) | (1 << TWSTA0);
-	if(this->waitForAck()){this->busFailure = 1; return;}
+	if(this->waitForAck()){this->busFailure = 1;  return;}
 	_SFR_MEM8(this->twdr) = SSD1306_ADDR<<1;
 	_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWINT0) | (1 << TWEA0);
-	if(this->waitForAck()){this->busFailure = 1; return;}
+	if(this->waitForAck()){this->busFailure = 1;  return;}
 	_SFR_MEM8(this->twdr) = SSD1306_DATA_CONTINUE;
 	_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWINT0) | (1 << TWEA0);
-	if(this->waitForAck()){this->busFailure = 1; return;}
+	if(this->waitForAck()){this->busFailure = 1;  return;}
 
 		for(i = 0; i < len; i++)
 		{
@@ -239,13 +240,13 @@ void Screen::printString(const uint8_t *string, uint8_t x, uint8_t y, bool inver
 				_SFR_MEM8(this->twdr) = pattern;
 					
 				_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWINT0) | (1 << TWEA0);									// Clear TWINT to proceed
-				if(this->waitForAck()){this->busFailure = 1; return;}											// Wait for TWI to be ready
+				if(this->waitForAck()){this->busFailure = 1;  return;}											// Wait for TWI to be ready
 			}
 		}
 	
 
 	_SFR_MEM8(this->twcr) = (1 << TWEN0)| (1 << TWINT0) | (1 << TWSTO0);									// Send STOP
-	
+	 
 }
 
 void Screen::drawRect(int x1, int y1, int x2, int y2, bool color)
@@ -279,13 +280,13 @@ void Screen::drawRect(int x1, int y1, int x2, int y2, bool color)
 
 	// Send start address
 	_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWEA0) | (1 << TWINT0) | (1 << TWSTA0);
-	if(this->waitForAck()){this->busFailure = 1; return;}
+	if(this->waitForAck()){this->busFailure = 1;  return;}
 	_SFR_MEM8(this->twdr) = SSD1306_ADDR<<1;
 	_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWINT0) | (1 << TWEA0);
-	if(this->waitForAck()){this->busFailure = 1; return;}
+	if(this->waitForAck()){this->busFailure = 1;  return;}
 	_SFR_MEM8(this->twdr) = SSD1306_DATA_CONTINUE;
 	_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWINT0) | (1 << TWEA0);
-	if(this->waitForAck()){this->busFailure = 1; return;}
+	if(this->waitForAck()){this->busFailure = 1;  return;}
 
 	if(color)
 	{
@@ -317,7 +318,7 @@ void Screen::drawRect(int x1, int y1, int x2, int y2, bool color)
 		_SFR_MEM8(this->twdr) = pattern;
 
 		_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWINT0) | (1 << TWEA0);									// Clear TWINT to proceed
-		if(this->waitForAck()){this->busFailure = 1; return;}											// Wait for TWI to be ready
+		if(this->waitForAck()){this->busFailure = 1;  return;}											// Wait for TWI to be ready
 	}
 
 	if(y2/8 != y1/8)
@@ -337,7 +338,7 @@ void Screen::drawRect(int x1, int y1, int x2, int y2, bool color)
 				_SFR_MEM8(this->twdr) = pattern;
 
 				_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWINT0) | (1 << TWEA0);									// Clear TWINT to proceed
-				if(this->waitForAck()){this->busFailure = 1; return;}											// Wait for TWI to be ready
+				if(this->waitForAck()){this->busFailure = 1;  return;}											// Wait for TWI to be ready
 			}
 		}
 		
@@ -360,13 +361,13 @@ void Screen::drawRect(int x1, int y1, int x2, int y2, bool color)
 			_SFR_MEM8(this->twdr) = pattern;
 			
 			_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWINT0) | (1 << TWEA0);									// Clear TWINT to proceed
-			if(this->waitForAck()){this->busFailure = 1; return;}											// Wait for TWI to be ready
+			if(this->waitForAck()){this->busFailure = 1;  return;}											// Wait for TWI to be ready
 		}
 	}
 	
 
 	_SFR_MEM8(this->twcr) = (1 << TWEN0)| (1 << TWINT0) | (1 << TWSTO0);									// Send STOP
-
+	 
 	
 }
 
@@ -376,19 +377,21 @@ void Screen::cmd(uint8_t cmd)
 	{
 		return;
 	}
+	
 	// Send start address
 	_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWEA0) | (1 << TWINT0) | (1 << TWSTA0);						// Send START
-	if(this->waitForAck()){this->busFailure = 1; return;}											// Wait for TWI to be ready
+	if(this->waitForAck()){this->busFailure = 1;  return;}											// Wait for TWI to be ready
 	_SFR_MEM8(this->twdr) = SSD1306_ADDR<<1;
 	_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWINT0) | (1 << TWEA0);									// Clear TWINT to proceed
-	if(this->waitForAck()){this->busFailure = 1; return;}											// Wait for TWI to be ready
+	if(this->waitForAck()){this->busFailure = 1;  return;}											// Wait for TWI to be ready
 
 	_SFR_MEM8(this->twdr) = SSD1306_COMMAND;
 	_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWINT0) | (1 << TWEA0);									// Clear TWINT to proceed
-	if(this->waitForAck()){this->busFailure = 1; return;}											// Wait for TWI to be ready
+	if(this->waitForAck()){this->busFailure = 1;  return;}											// Wait for TWI to be ready
 	_SFR_MEM8(this->twdr) = cmd;
 	_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWINT0) | (1 << TWEA0);									// Clear TWINT to proceed
-	if(this->waitForAck()){this->busFailure = 1; return;}											// Wait for TWI to be ready
+	if(this->waitForAck()){this->busFailure = 1;  return;}											// Wait for TWI to be ready
 
 	_SFR_MEM8(this->twcr) = (1 << TWEN0) | (1 << TWINT0) | (1 << TWSTO0);									// Send STOP
+	 
 }

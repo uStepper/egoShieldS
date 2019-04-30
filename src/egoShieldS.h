@@ -133,10 +133,16 @@
 					    {\
 					      if(this->screen->busFailure)\
 					      {\
+					      	cli();\
 					        this->lastPage = NOPAGE;\
 					        this->screen->init();\
+					        x;\
+					      	sei();\
 					      }\
-					      x;\
+					      else\
+					      {\
+					      	x;\
+					      }\
 					    }\
 					    while(this->screen->busFailure);\
 

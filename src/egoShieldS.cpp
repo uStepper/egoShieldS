@@ -83,7 +83,15 @@ egoShield::egoShield(void)
 
 void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, float res, uint16_t shutterDelay)//brake mode?
 {
-  this->screen = new Screen(0);
+  #ifdef ARDUINO_AVR_USTEPPER_S
+    this->screen = new Screen(1);
+  #endif
+
+  #ifdef ARDUINO_AVR_USTEPPER_S_LITE
+    this->screen = new Screen(0);
+  #endif
+
+  
   this->screen->init();
   egoPointer = this;
 
@@ -100,6 +108,7 @@ void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, flo
 
   brakeFlag = 1;
   stepper.setup();
+  //stepper.setup(PID,3200.0,50.0,0.0,0.0,true);
   //stepper.setup(PID,3200.0,5.5,4.1,0.0,true);
   // Check whether the uStepper is mounted on a motor with a magnet attached. If not, show an error message untill mounted correctly
   /*do
@@ -120,9 +129,12 @@ void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, flo
 
   stepper.encoder.setHome();
   DRAWPAGE(this->startPage());
-  stepper.setMaxVelocity(this->velocity);
+  #ifdef ARDUINO_AVR_USTEPPER_S
+    stepper.setMaxVelocity(this->velocity/16.0);
+  #else
+    stepper.setMaxVelocity(this->velocity);
+  #endif
   stepper.setMaxAcceleration(this->acceleration);
-  Serial.begin(9600);
   pinMode(FWBT ,INPUT);
   pinMode(PLBT ,INPUT);
   pinMode(RECBT ,INPUT);
@@ -144,7 +156,7 @@ void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, flo
   stepper.moveToAngle(30);
   while(stepper.getMotorState());
   stepper.encoder.setHome();
-  pidFlag = 1;//enable PID
+  pidFlag = 0;//enable PID
   setPoint = stepper.encoder.getAngleMoved();//set manual move setpoint to current position
   TCNT4 = 0;
   ICR4 = 35000;
@@ -157,6 +169,7 @@ void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, flo
 void egoShieldTimeLapse::loop(void)
 {
   setPoint = stepper.encoder.getAngleMoved();
+
   switch (state)
   {
     case 'a'://if we are in idle
@@ -180,7 +193,6 @@ void egoShieldTimeLapse::loop(void)
 void egoShieldTeach::loop(void)
 {
   setPoint = stepper.encoder.getAngleMoved();
-  
   switch (state)
   {
     case 'a'://if we are in idle
@@ -265,8 +277,6 @@ void egoShield::recordMode(void)
     this->recordBtn.btn = 0;
     if(record == 0)//If we were not recording before
     {
-      //stepper.encoder.setHome();//Set current position as home
-      //setPoint = 0;
       place = 0;//Reset the array counter
       record = 1;//Record flag
     }
@@ -290,7 +300,11 @@ void egoShield::recordMode(void)
     state = 'a';//stop state
     continousForward = 0;
     continousBackwards = 0;
-    DRAWPAGE(this->idlePage(pidFlag,setPoint));
+    stepper.moveToAngle(pos[0]);
+    do
+    {
+      DRAWPAGE(this->idlePage(pidFlag,setPoint));
+    }
     while(this->playBtn.state == HOLD);
     this->resetAllButton(); 
   }  
@@ -394,6 +408,7 @@ void egoShield::idleMode(void)
 void egoShield::playMode(void)
 {
   static uint8_t started = 0;
+  static bool lastMove = 0;
 
   DRAWPAGE(this->playPage(loopMode,pidFlag,place,0));
   
@@ -423,9 +438,14 @@ void egoShield::playMode(void)
     {
       place = 0;//reset array counter
       loopMode = 0;
+      lastMove = 0;
       started = 0;
       state = 'a';//idle
-      DRAWPAGE(this->idlePage(pidFlag,setPoint));
+      stepper.moveToAngle(pos[0]);
+      do
+      {
+        DRAWPAGE(this->idlePage(pidFlag,setPoint));
+      }
       while(this->playBtn.state == HOLD);
     }
     this->resetAllButton(); 
@@ -440,14 +460,25 @@ void egoShield::playMode(void)
     #endif
     {
       place++;//increment array counter
+      if(lastMove && loopMode)
+      {
+        lastMove = 0;
+      }
       if(loopMode && place > endmove)
       {
         place = 0;
+        lastMove = 1;
       }
       else if(place > endmove)//If we are at the end move
       {
         place = 0;//reset array counter
+        lastMove = 1;
+      }
+      else if(lastMove)//If we are at the end move
+      {
+        place = 0;//reset array counter
         started = 0;
+        lastMove = 0;
         state = 'a';
         this->resetAllButton(); 
         return;
@@ -487,7 +518,11 @@ void egoShield::changeVelocity(void)
     }
     else if(this->playBtn.btn == 1)
     {
-      stepper.setMaxVelocity(this->velocity);
+      #ifdef ARDUINO_AVR_USTEPPER_S
+        stepper.setMaxVelocity(this->velocity/16.0);
+      #else
+        stepper.setMaxVelocity(this->velocity);
+      #endif
       stepper.setMaxAcceleration(this->acceleration);
       this->resetAllButton(); 
       return;
@@ -508,11 +543,22 @@ void egoShield::pauseMode(void)
     else      //Long press = stop
     {
       state = 'a';
+      loopMode = 0;
       DRAWPAGE(this->idlePage(pidFlag,setPoint));
       while(this->playBtn.state == HOLD);
       this->resetAllButton();
     }
     this->resetButton(&playBtn);
+  }
+  if(this->forwardBtn.state == HOLD)//loop mode start
+  {
+    this->resetButton(&forwardBtn);
+    loopMode = 1;
+  }
+  else if(this->backwardsBtn.state == HOLD)//loop mode stop
+  {
+    this->resetButton(&backwardsBtn);
+    loopMode = 0;
   }
 }
 
@@ -677,7 +723,7 @@ void egoShield::idlePage(bool pidMode, float pos)
     this->screen->clrScreen();
     lastPidMode = pidMode;
     this->lastPage = IDLEPAGE;
-    position = (int32_t)(pos/this->resolution);
+    position = (int32_t)(stepper.encoder.getAngleMoved()/this->resolution);
     sBuf = "Position: ";
     sBuf += position;
     sBuf += " mm";
@@ -704,15 +750,14 @@ void egoShield::idlePage(bool pidMode, float pos)
   }
   else
   {
-    if((int32_t)(pos/this->resolution) != position)
+    if((int32_t)(stepper.encoder.getAngleMoved()/this->resolution) != position)
     {
-      position = (int32_t)(pos/this->resolution);
-
+      position = (int32_t)(stepper.encoder.getAngleMoved()/this->resolution);
       sBuf = position;
       sBuf += " mm";
       sBuf.toCharArray(buf, 20);
 
-      this->screen->drawRect(62,24,127,31,0);
+      this->screen->drawRect(62,24,100,31,0);
       this->screen->printString((const uint8_t*)buf,62,24,0);
     }
 
@@ -805,8 +850,8 @@ void egoShield::recordPage(bool pidMode, bool recorded, uint8_t index, float pos
         sBuf += " mm";
         sBuf.toCharArray(buf, 20);
 
-        this->screen->drawRect(56,24,127,31,0);
-        this->screen->printString((const uint8_t*)buf,56,24,0);
+        this->screen->drawRect(62,24,127,31,0);
+        this->screen->printString((const uint8_t*)buf,62,24,0);
       }
     }
 
@@ -967,19 +1012,19 @@ void egoShield::pausePage(bool loopMode, bool pidMode, uint8_t index)
     {
       this->screen->printString("PID OFF",45,0,1);
     }
-    this->screen->drawImage(playBmp, 28, 48, 16, 16, 1);
+    this->screen->drawImage(playBmp, 22, 48, 16, 16, 1);
     this->screen->drawImage(stopBmp, 35, 48, 16, 16, 1);
 
     lastLoopMode = loopMode;
 
     if(loopMode)
     {
-      this->screen->drawImage(repeatBmp, 112, 48, 16, 16, 1);
+      this->screen->drawImage(repeatBmp, 112, 0, 16, 8, 1);
     }
 
-    this->screen->printString("Paused at Position ",2,24,1);
+    this->screen->printString("Paused at Position ",2,24,0);
     String(index).toCharArray(buf, 5);
-    this->screen->printString((const uint8_t*)buf,90,24,1);
+    this->screen->printString((const uint8_t*)buf,114,24,0);
   }
   else
   {
@@ -988,7 +1033,7 @@ void egoShield::pausePage(bool loopMode, bool pidMode, uint8_t index)
       this->screen->drawRect(110,0,127,7,1);
       if(loopMode)
       {
-        this->screen->drawImage(repeatBmp, 112, 48, 16, 16, 1);
+        this->screen->drawImage(repeatBmp, 112, 0, 16, 8, 1);
       }
     }
 
@@ -1094,24 +1139,22 @@ void egoShield::timePage(uint8_t step, bool pidMode)
 
     if(lastStepSize != stepSize)
     {
-      sBuf = "Stepsize:  ";
-      sBuf += stepSize;
+      sBuf = stepSize;
       lastStepSize = stepSize;
       sBuf += " mm";
       sBuf.toCharArray(buf, 22);
-      this->screen->drawRect(0,24,114,31,0);
-      this->screen->printString((const uint8_t*)buf,2,24,0);
+      this->screen->drawRect(66,24,127,31,0);
+      this->screen->printString((const uint8_t*)buf,68,24,0);
     }
 
     if(lastInterval != interval)
     {
-      sBuf = "Interval:  ";
-      sBuf += interval*0.001;
+      sBuf = interval*0.001;
       lastInterval = interval;
       sBuf += " s";
       sBuf.toCharArray(buf, 22);
-      this->screen->drawRect(9,32,114,39,0);
-      this->screen->printString((const uint8_t*)buf,2,32,0);
+      this->screen->drawRect(66,32,127,39,0);
+      this->screen->printString((const uint8_t*)buf,68,32,0);
     }
 
     if(lastAngle != angle)
