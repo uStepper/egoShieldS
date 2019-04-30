@@ -5,14 +5,15 @@ The library is supported in Arduino IDE 1.8.8.
 
 For more information, visit www.ustepper.com
 
-## Credit
-This library uses the U8G2 library (https://github.com/olikraus/u8g2/) for driver the LCD screen. 
-For the uStepper S Egoshield library, I had to make some small adjustments to this great U8G2 library, and I therefore copied the source into 
-my source files. this also removes the need to install third party libraries.
-
-All credit for the LCD part of this library goes to the author of the U8G2 library !
+## Documentation
+More information and documentation will come soon !
 
 ## Change Log
+1.0.0:
+- Bug fixes
+- Complete rewrite of OLED screen code, to fix random lockups on S-lite
+0.1.1:
+- Few bug fixes
 0.1.0:	
 - Initial release
 
