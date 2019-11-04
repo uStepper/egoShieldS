@@ -6,7 +6,8 @@ The library is supported in Arduino IDE 1.8.8.
 For more information, visit www.ustepper.com
 
 ## Documentation
-More information and documentation will come soon !
+Functional description is found here:
+https://ustepper.com/store/index.php?controller=attachment&id_attachment=14
 
 ## Change Log
 1.0.0:
