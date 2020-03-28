@@ -81,7 +81,7 @@ egoShield::egoShield(void)
 {
 }
 
-void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, float res, uint16_t shutterDelay)//brake mode?
+void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, float res, int8_t stallsens, uint16_t shutterDelay)//brake mode?
 {
   #ifdef ARDUINO_AVR_USTEPPER_S
     this->screen = new Screen(1);
@@ -104,37 +104,36 @@ void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, flo
   this->resolution = res;
   this->stepSize = 2;
   this->interval = 2000;
+  this->stallSensitivity=stallsens;
   this->shutterDelay = shutterDelay;
+  DRAWPAGE(this->startPage());//show startpage
 
   brakeFlag = 1;
-  stepper.setup();
-  //stepper.setup(PID,3200.0,50.0,0.0,0.0,true);
-  //stepper.setup(PID,3200.0,5.5,4.1,0.0,true);
-  // Check whether the uStepper is mounted on a motor with a magnet attached. If not, show an error message untill mounted correctly
-  /*do
-  {
-    u8g2->firstPage();
-    do 
-    {
-      u8g2->setFontMode(1);
-      u8g2->setDrawColor(1);
-      u8g2->setFontDirection(0);
-      u8g2->setFont(u8g2_font_6x10_tf);
-    
-      u8g2->drawStr(2,10,"Magnet not present !");
-    } while ( u8g2->nextPage() );  
-  }
-  while(stepper.encoder.detectMagnet() == 2 || stepper.encoder.detectMagnet() == 1);
-*/
-
-  stepper.encoder.setHome();
-  DRAWPAGE(this->startPage());
+  
   #ifdef ARDUINO_AVR_USTEPPER_S
     stepper.setMaxVelocity(this->velocity/16.0);
   #else
     stepper.setMaxVelocity(this->velocity);
   #endif
   stepper.setMaxAcceleration(this->acceleration);
+
+  #ifdef ARDUINO_AVR_USTEPPER_S
+    stepper.setup(PID,200);
+    stepper.checkOrientation(10.0);
+  #else
+    stepper.setup(PID,3200.0,pTerm,iTerm,dTerm); 
+  #endif
+
+  if(this->stallSensitivity!=100)
+  {
+    #ifdef ARDUINO_AVR_USTEPPER_S
+      stepper.moveToEnd(CCW,vel*0.019,this->stallSensitivity);
+    #else
+      stepper.moveToEnd(CCW, map(stallsens, -64, 63, 0.0, 1.0));
+    #endif
+  }
+  stepper.encoder.setHome();
+
   pinMode(FWBT ,INPUT);
   pinMode(PLBT ,INPUT);
   pinMode(RECBT ,INPUT);
@@ -145,18 +144,20 @@ void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, flo
   digitalWrite(PLBT ,HIGH);//pull-up
   digitalWrite(RECBT ,HIGH);//pull-up
   digitalWrite(BWBT ,HIGH);//pull-up
-  
-  DRAWPAGE(this->startPage());//show startpage
-  delay(2000);//for 2 seconds
+
   this->resetAllButton(); 
   state = 'a';//start in idle
-  stepper.moveToEnd(CW);
+  stepper.disablePid();
+  stepper.stop();
+  stepper.encoder.setHome();
+  delay(1000);
+  if(this->stallSensitivity!=100)
+  {
+    stepper.moveAngle(30);
+    while(stepper.getMotorState());
+  }
   stepper.encoder.setHome();
 
-  stepper.moveToAngle(30);
-  while(stepper.getMotorState());
-  stepper.encoder.setHome();
-  pidFlag = 0;//enable PID
   setPoint = stepper.encoder.getAngleMoved();//set manual move setpoint to current position
   TCNT4 = 0;
   ICR4 = 35000;
@@ -323,6 +324,7 @@ void egoShield::idleMode(void)
       stepper.stop();
       this->resetAllButton(); 
       continousForward = 0;
+      stepper.moveAngle(0.01);
     }
   }
   else if(continousBackwards)
@@ -332,6 +334,7 @@ void egoShield::idleMode(void)
       stepper.stop();
       this->resetAllButton(); 
       continousBackwards = 0;
+      stepper.moveAngle(-0.01);
     }
   }
   if(this->playBtn.btn)//if play/stop/pause is pressed for long time, invert the pid mode
@@ -346,15 +349,17 @@ void egoShield::idleMode(void)
     }
     else
     {
+      stepper.stop();
       if(pidFlag == 0)
       {
         pidFlag = 1;
-        //stepper.enablePid();
+        stepper.enablePid();
+        stepper.moveAngle(0.01);     
       }
       else
       {
         pidFlag = 0;
-        //stepper.disablePid();
+        stepper.disablePid();
         stepper.stop();
       }
       DRAWPAGE(this->idlePage(pidFlag,setPoint));
@@ -567,7 +572,8 @@ void egoShield::timeMode(void)
   static uint8_t step = 0;  
   static uint32_t i = 0, j = 0;
   static uint8_t runState = 0;
-
+  int32_t OLD=0;
+  stepper.disablePid();
   stepper.getMotorState();
 
   DRAWPAGE(this->timePage(step,pidFlag));
@@ -632,6 +638,7 @@ void egoShield::timeMode(void)
   {  
     if(runState == 0)   //start new movement
     {
+        OLD=stepper.encoder.getAngleMoved();
         setPoint += (stepSize*resolution);
         stepper.moveAngle((stepSize*resolution));
         DRAWPAGE(this->timePage(step,pidFlag));
@@ -682,6 +689,25 @@ void egoShield::timeMode(void)
       this->resetAllButton(); 
       return;
     }
+    #ifdef ARDUINO_AVR_USTEPPER_S
+    if(!stepper.getMotorState() && (stepSize*resolution*0.9>abs(OLD-stepper.encoder.getAngleMoved())))
+    {
+      delay(500);
+      if(this->stallSensitivity!=100)
+      {
+        stepper.moveToEnd(CCW,this->velocity*0.019,this->stallSensitivity);
+        stepper.encoder.setHome();
+        stepper.moveToAngle(30);
+        while(stepper.getMotorState());
+        stepper.encoder.setHome();
+      }
+      state = 'a';//idle state 
+      step = 0;
+      runState=0;
+      this->resetAllButton();
+      return;
+    }
+    #else
     if(stepper.isStalled())
     {
       stepper.moveToEnd(CCW);
@@ -691,9 +717,11 @@ void egoShield::timeMode(void)
       stepper.encoder.setHome();
       state = 'a';//idle state 
       step = 0;
+      runState=0;
       this->resetAllButton();
       return;
     }
+    #endif
   }
 }
 

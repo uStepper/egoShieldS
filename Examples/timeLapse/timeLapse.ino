@@ -1,17 +1,18 @@
 #include <egoShieldS.h>
 
 #define ACCELERATION 4000 //Acceleration used during PLAY
-#define VELOCITY 400 //Velocity used during PLAY
-#define P 1.0 //P-term of the PID
+#define VELOCITY 4000 //Velocity used during PLAY
+#define P 10.0 //P-term of the PID
 #define I 0.1 //I-term of the PID
 #define D 0.05 //D-term of the PID
 #define RESOLUTION 5 // Degree per mm of travel
+#define STALLSENSITIVITY 2 //sensitivity of the stall detection, between -64 and 63 - higher number is less sensitive - TO DISABLE HOMING SET TO 100!
 
 egoShieldTimeLapse ego;
 
 void setup() {
   // put your setup code here, to run once:
-  ego.setup(ACCELERATION,VELOCITY,P,I,D,RESOLUTION,250);
+  ego.setup(ACCELERATION,VELOCITY,P,I,D,RESOLUTION,STALLSENSITIVITY,250);//the final value is shutter delay for ego-shield timelapse
 }
 
 void loop() {

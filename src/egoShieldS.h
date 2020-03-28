@@ -240,6 +240,7 @@ public:
 						  float I = 0.02, 
 						  float D = 0.006,
 						  float res = 1,
+						  int8_t stallsens = 2,
 						  uint16_t shutterDelay = 250);
 	/**
 	* @brief      	Contains the main logic of the shield functionality, e.g. transition between states (idle, play, record and pause).
@@ -309,6 +310,8 @@ protected:
 	uint16_t interval;
 	/** This variable holds the resolution deg/mm */
 	float resolution;
+	/** This variable holds the stall sensitivity level */
+	int8_t stallSensitivity;
 	/** This variable holds the brake flag */
 	bool brakeFlag;
 	/* Declaration of structs for each button*/
