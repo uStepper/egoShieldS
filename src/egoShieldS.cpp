@@ -1,42 +1,11 @@
 /********************************************************************************************
 *       File:       egoShieldTimeLapse.cpp                                                  *
 *       Version:    1.1.0                                                                   *
-*       Date:       March 17th, 2018                                                        *
+*      	Date: 		  April 1st, 2020		                                    				          *
 *       Author:     Mogens Groth Nicolaisen                                                 *
 *                                                                                           * 
 *********************************************************************************************
-*                 egoShield class                                                           *
-*                                                                                           *
-* This file contains the implementation of the class methods, incorporated in the           *
-* egoShield Arduino library. The library is used by instantiating an egoShield object       *
-* by calling of the overloaded constructor:                                                 *
-*                                                                                           *
-*   example:                                                                                *
-*                                                                                           *
-*   egoShield ego;                                                                          *
-*                                                                                           *
-* The instantiation above creates an egoShield object                                       *
-* after instantiation of the object, the object setup function should be called within      *
-* Arduino's setup function, and the object loop function should be run within the Arduino's *
-* loop function:                                                                            *
-*                                                                                           *
-*   example:                                                                                *
-*                                                                                           *
-*   egoShieldTimeLapse ego;                                                                 *
-*                                                                                           *
-*   void setup()                                                                            *
-*   {                                                                                       *
-*     ego.setup();                                                                          *
-*   }                                                                                       *
-*                                                                                           *
-*   void loop()                                                                             *
-*   {                                                                                       *
-*     ego.loop();                                                                           *
-*   }                                                                                       *
-*                                                                                           *
-*                                                                                           *
-*********************************************************************************************
-* (C) 2018                                                                                  *
+* (C) 2020                                                                                  *
 *                                                                                           *
 * uStepper ApS                                                                              *
 * www.ustepper.com                                                                          *
@@ -52,11 +21,11 @@
 *                                                                                           *
 ********************************************************************************************/
 /**
- * @file egoShieldTeach.cpp
- * @brief      Class implementations for the egoShield Teach library
+ * @file egoShieldS.cpp
+ * @brief      Class implementations for the egoShieldS library
  *
  *             This file contains the implementations of the classes defined in
- *             egoShieldTeach.h
+ *             egoShieldS.h
  *
  * @author     Mogens Groth Nicolaisen (mogens@ustepper.com)
  */

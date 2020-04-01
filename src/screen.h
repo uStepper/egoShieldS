@@ -1,3 +1,31 @@
+/********************************************************************************************
+* 	 	File: 		screen.h																*
+*		Version:    1.1.0                                           						*
+*      	Date: 		April 1st, 2020	                                    					*
+*      	Author: 	Mogens Groth Nicolaisen                                					*
+*                                                   										*	
+*********************************************************************************************
+* (C) 2020                                                                                  *
+*                                                                                           *
+* uStepper ApS                                                                              *
+* www.ustepper.com                                                                          *
+* administration@ustepper.com                                                               *
+*                                                                                           *
+* The code contained in this file is released under the following open source license:      *
+*                                                                                           *
+*     Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International               *
+*                                                                                           *
+*   The code in this file is provided without warranty of any kind - use at own risk!       *
+*   neither uStepper ApS nor the author, can be held responsible for any damage             *
+*   caused by the use of the code contained in this file !                                  *
+*                                                                                           *
+********************************************************************************************/
+/**
+ * @file screen.h
+ * @brief      class definitions for the screen handling
+ *
+ * @author     Mogens Groth Nicolaisen (mogens@ustepper.com)
+ */
 #ifndef _SCREEN_H_
 #define _SCREEN_H_
 
