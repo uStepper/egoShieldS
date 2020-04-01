@@ -1,7 +1,7 @@
 # egoShield
 
 The library contains support for the uStepper S egoShield. Two examples are included to show the functionality of the library.
-The library is supported in Arduino IDE 1.8.8.
+The library is supported in Arduino IDE 1.8.11.
 
 For more information, visit www.ustepper.com
 
@@ -10,11 +10,16 @@ Functional description is found here:
 https://ustepper.com/store/index.php?controller=attachment&id_attachment=14
 
 ## Change Log
+1.1.0:
+- adapted for changes in uStepper S library release 2.0.0
+
 1.0.0:
 - Bug fixes
 - Complete rewrite of OLED screen code, to fix random lockups on S-lite
+
 0.1.1:
 - Few bug fixes
+
 0.1.0:	
 - Initial release
 

@@ -1,11 +1,11 @@
 /********************************************************************************************
-* 	 	File: 		egoShieldTimeLapse.h													*
+* 	 	File: 		egoShieldS.h															*
 *		Version:    1.1.0                                           						*
-*      	Date: 		March 17th, 2018	                                    				*
+*      	Date: 		April 1st, 2020		                                    				*
 *      	Author: 	Mogens Groth Nicolaisen                                					*
 *                                                   										*	
 *********************************************************************************************
-* (C) 2018                                                                                  *
+* (C) 2020                                                                                  *
 *                                                                                           *
 * uStepper ApS                                                                              *
 * www.ustepper.com                                                                          *
@@ -21,40 +21,28 @@
 *                                                                                           *
 ********************************************************************************************/
 /**
-*	\mainpage Arduino library for the uStepper egoShield shield
+ * @file egoShieldS.h
+ * @brief      Class definition for the egoShieldS library
+ *
+ * @author     Mogens Groth Nicolaisen (mogens@ustepper.com)
+ */
+/**
+*	\mainpage Arduino library for the uStepper S egoShield shield
 *	
-*	This is the egoShield Arduino library, providing software functions for the uStepper egoShield shield.
-*	
-*	\par News!
-*
-*	\par Features
-*	The egoShield library contains the following features:
-*	
-*	\image html functional.png
-*	
-*	- State is indicated at the top left corner of the OLED display
-*	- PID mode is indicated in the top middle of the OLED display
-*	- Loop mode is indicated in the top right corner of the OLED display
-*	- The button functionalities are indicated by a bar in the bottom of the OLED display
-* 
+*	This is the egoShield S Arduino library, providing software functions for the uStepper S egoShield shield.
+*	 
 *	\par Installation
-*	To install the egoShield library into the Arduino IDE, perform the following steps:
+*	To install the egoShieldS library into the Arduino IDE, perform the following steps:
 *
 *	- Go to Sketch->Include Libraries->Manage Libraries... in the Arduino IDE
-*	- Search for "egoShield", in the top right corner of the "Library Manager" window
-*	- Install egoShield library 
+*	- Search for "egoShieldS", in the top right corner of the "Library Manager" window
+*	- Install egoShieldS library 
 *	
-*	The library is tested with Arduino IDE 1.8.5
-*
-*	\par Prerequisites
-*	The library requires the uStepper library:
-*	<a rel="license" href="https://github.com/uStepper/uStepper">uStepper GitHub</a>
-*	and the u8g2 library from Olikraus
-*	<a rel="license" href="https://github.com/olikraus/u8g2">u8g2 GitHub</a>
+*	The library is tested with Arduino IDE 1.8.11
 *
 *	\par Copyright
 *
-*	(C)2018 uStepper ApS
+*	(C)2020 uStepper ApS
 *																	
 *	www.uStepper.com 																	
 *
@@ -79,34 +67,19 @@
 *	\author Mogens Groth Nicolaisen (mogens@ustepper.com)
 *	\par Change Log
 *	\version 1.1.0:
-* 	- changed order of events to move, fire shutter, delay
-*	- added an adjustable delay parameter - delaying the camera shutter after end of move
-*	- idle page encoder value is now displayed in mm
+* 	- adapted for changes in uStepper S library release 2.0.0
 *
 *	\version 1.0.0:
-* 	- changed button debouncing algorithm
-*	- fixed various minor bugs
-*	- finished functionality
+* 	- Bug fixes
+*	- Complete rewrite of OLED screen code, to fix random lockups on S-lite
 *
 *	\version 0.1.1:	
-*	- Corrected release version in library properties
+*	- Few bug fixes
 *	
 *	\version 0.1.0:	
 *	- Initial release
 *	
-*
 */
-
-/**
- * @file egoShieldTimeLapse.h
- * @brief      Function prototypes and definitions for the egoShield library
- *
- *             This file contains class and function prototypes for the library,
- *             as well as necessary constants and global variables.
- *
- * @author     Mogens Groth Nicolaisen (mogens@ustepper.com)
- */
-
 #ifndef egoShield_h
 #define egoShield_h
 
@@ -240,6 +213,7 @@ public:
 						  float I = 0.02, 
 						  float D = 0.006,
 						  float res = 1,
+						  int8_t stallsens = 2,
 						  uint16_t shutterDelay = 250);
 	/**
 	* @brief      	Contains the main logic of the shield functionality, e.g. transition between states (idle, play, record and pause).
@@ -309,6 +283,8 @@ protected:
 	uint16_t interval;
 	/** This variable holds the resolution deg/mm */
 	float resolution;
+	/** This variable holds the stall sensitivity level */
+	int8_t stallSensitivity;
 	/** This variable holds the brake flag */
 	bool brakeFlag;
 	/* Declaration of structs for each button*/
