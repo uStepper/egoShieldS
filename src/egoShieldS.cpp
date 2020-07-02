@@ -1,7 +1,7 @@
 /********************************************************************************************
 *       File:       egoShieldTimeLapse.cpp                                                  *
 *       Version:    1.1.0                                                                   *
-*      	Date: 		  April 1st, 2020		                                    				          *
+*       Date:       April 1st, 2020                                                         *
 *       Author:     Mogens Groth Nicolaisen                                                 *
 *                                                                                           * 
 *********************************************************************************************
@@ -88,7 +88,7 @@ void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, flo
 
   #ifdef ARDUINO_AVR_USTEPPER_S
     stepper.setup(PID,200);
-    stepper.checkOrientation(10.0);
+    stepper.checkOrientation(20.0);
   #else
     stepper.setup(PID,3200.0,pTerm,iTerm,dTerm); 
   #endif
@@ -119,13 +119,6 @@ void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, flo
   stepper.disablePid();
   stepper.stop();
   stepper.encoder.setHome();
-  delay(1000);
-  if(this->stallSensitivity!=100)
-  {
-    stepper.moveAngle(30);
-    while(stepper.getMotorState());
-  }
-  stepper.encoder.setHome();
 
   setPoint = stepper.encoder.getAngleMoved();//set manual move setpoint to current position
   TCNT4 = 0;
@@ -134,6 +127,16 @@ void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, flo
   TIMSK4 = (1 << OCIE4A);
   TCCR4A = (1 << WGM41);
   TCCR4B = (1 << WGM42) | (1 << WGM43) | ( 1 << CS41);
+  #ifdef ARDUINO_AVR_USTEPPER_S
+    stepper.checkOrientation(20.0);
+  #endif
+  delay(1000);
+  if(this->stallSensitivity!=100)
+  {
+    stepper.moveAngle(30);
+    while(stepper.getMotorState());
+  }
+  stepper.encoder.setHome();
 }
 
 void egoShieldTimeLapse::loop(void)
