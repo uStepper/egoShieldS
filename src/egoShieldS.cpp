@@ -137,6 +137,8 @@ void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, flo
     while(stepper.getMotorState());
   }
   stepper.encoder.setHome();
+  stepper.setControlThreshold(10);
+  stepper.disablePid();  
 }
 
 void egoShieldTimeLapse::loop(void)
@@ -545,7 +547,6 @@ void egoShield::timeMode(void)
   static uint32_t i = 0, j = 0;
   static uint8_t runState = 0;
   int32_t OLD=0;
-  stepper.disablePid();
   stepper.getMotorState();
 
   DRAWPAGE(this->timePage(step,pidFlag));
