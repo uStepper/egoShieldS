@@ -758,7 +758,7 @@ void egoShield::idlePage(bool pidMode, float pos)
       sBuf += " mm";
       sBuf.toCharArray(buf, 20);
 
-      this->screen->drawRect(62,24,100,31,0);
+      this->screen->drawRect(62,24,127,31,0);
       this->screen->printString((const uint8_t*)buf,62,24,0);
     }
 
@@ -1164,7 +1164,7 @@ void egoShield::timePage(uint8_t step, bool pidMode)
       lastAngle = angle;
       sBuf += " mm";
       sBuf.toCharArray(buf, 22);
-      this->screen->drawRect(68,40,114,47,0);
+      this->screen->drawRect(68,40,127,47,0);
       this->screen->printString((const uint8_t*)buf,68,40,0);
     }
 
