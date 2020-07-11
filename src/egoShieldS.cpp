@@ -119,17 +119,6 @@ void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, flo
   stepper.disablePid();
   stepper.stop();
   stepper.encoder.setHome();
-
-  setPoint = stepper.encoder.getAngleMoved();//set manual move setpoint to current position
-  TCNT4 = 0;
-  ICR4 = 35000;
-  TIFR4 = 0;
-  TIMSK4 = (1 << OCIE4A);
-  TCCR4A = (1 << WGM41);
-  TCCR4B = (1 << WGM42) | (1 << WGM43) | ( 1 << CS41);
-  #ifdef ARDUINO_AVR_USTEPPER_S
-    stepper.checkOrientation(20.0);
-  #endif
   delay(1000);
   if(this->stallSensitivity!=100)
   {
@@ -138,7 +127,16 @@ void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, flo
   }
   stepper.encoder.setHome();
   stepper.setControlThreshold(10);
-  stepper.disablePid();  
+  stepper.disablePid(); 
+
+  setPoint = stepper.encoder.getAngleMoved();//set manual move setpoint to current position
+  TCNT4 = 0;
+  ICR4 = 35000;
+  TIFR4 = 0;
+  TIMSK4 = (1 << OCIE4A);
+  TCCR4A = (1 << WGM41);
+  TCCR4B = (1 << WGM42) | (1 << WGM43) | ( 1 << CS41);
+
 }
 
 void egoShieldTimeLapse::loop(void)
