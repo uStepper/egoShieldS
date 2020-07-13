@@ -1,6 +1,6 @@
 /********************************************************************************************
 * 	 	File: 		screen.h																*
-*		Version:    1.1.0                                           						*
+*		Version:    1.1.1                                           						*
 *      	Date: 		April 1st, 2020	                                    					*
 *      	Author: 	Mogens Groth Nicolaisen                                					*
 *                                                   										*	

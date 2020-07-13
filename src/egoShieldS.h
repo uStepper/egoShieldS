@@ -1,6 +1,6 @@
 /********************************************************************************************
 * 	 	File: 		egoShieldS.h															*
-*		Version:    1.1.0                                           						*
+*		Version:    1.1.1                                           						*
 *      	Date: 		April 1st, 2020		                                    				*
 *      	Author: 	Mogens Groth Nicolaisen                                					*
 *                                                   										*	
@@ -66,6 +66,10 @@
 *
 *	\author Mogens Groth Nicolaisen (mogens@ustepper.com)
 *	\par Change Log
+*	\version 1.1.1:
+*	- Minor bugfixes
+*	- corrected OLED drawing
+*
 *	\version 1.1.0:
 * 	- adapted for changes in uStepper S library release 2.0.0
 *
