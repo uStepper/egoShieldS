@@ -10,6 +10,10 @@ Functional description is found here:
 https://ustepper.com/store/index.php?controller=attachment&id_attachment=14
 
 ## Change Log
+1.1.1:
+- Minor bugfixes
+- corrected OLED drawing
+
 1.1.0:
 - adapted for changes in uStepper S library release 2.0.0
 

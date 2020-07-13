@@ -1,7 +1,7 @@
 /********************************************************************************************
 *       File:       egoShieldTimeLapse.cpp                                                  *
-*       Version:    1.1.0                                                                   *
-*      	Date: 		  April 1st, 2020		                                    				          *
+*       Version:    1.1.1                                                                   *
+*       Date:       July 13th, 2020                                                         *
 *       Author:     Mogens Groth Nicolaisen                                                 *
 *                                                                                           * 
 *********************************************************************************************
@@ -88,7 +88,7 @@ void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, flo
 
   #ifdef ARDUINO_AVR_USTEPPER_S
     stepper.setup(PID,200);
-    stepper.checkOrientation(10.0);
+    stepper.checkOrientation(20.0);
   #else
     stepper.setup(PID,3200.0,pTerm,iTerm,dTerm); 
   #endif
@@ -126,6 +126,8 @@ void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, flo
     while(stepper.getMotorState());
   }
   stepper.encoder.setHome();
+  stepper.setControlThreshold(10);
+  stepper.disablePid(); 
 
   setPoint = stepper.encoder.getAngleMoved();//set manual move setpoint to current position
   TCNT4 = 0;
@@ -134,6 +136,7 @@ void egoShield::setup(uint16_t acc, uint16_t vel, float P, float I, float D, flo
   TIMSK4 = (1 << OCIE4A);
   TCCR4A = (1 << WGM41);
   TCCR4B = (1 << WGM42) | (1 << WGM43) | ( 1 << CS41);
+
 }
 
 void egoShieldTimeLapse::loop(void)
@@ -542,7 +545,6 @@ void egoShield::timeMode(void)
   static uint32_t i = 0, j = 0;
   static uint8_t runState = 0;
   int32_t OLD=0;
-  stepper.disablePid();
   stepper.getMotorState();
 
   DRAWPAGE(this->timePage(step,pidFlag));
@@ -754,7 +756,7 @@ void egoShield::idlePage(bool pidMode, float pos)
       sBuf += " mm";
       sBuf.toCharArray(buf, 20);
 
-      this->screen->drawRect(62,24,100,31,0);
+      this->screen->drawRect(62,24,127,31,0);
       this->screen->printString((const uint8_t*)buf,62,24,0);
     }
 
@@ -1160,7 +1162,7 @@ void egoShield::timePage(uint8_t step, bool pidMode)
       lastAngle = angle;
       sBuf += " mm";
       sBuf.toCharArray(buf, 22);
-      this->screen->drawRect(68,40,114,47,0);
+      this->screen->drawRect(68,40,127,47,0);
       this->screen->printString((const uint8_t*)buf,68,40,0);
     }
 
